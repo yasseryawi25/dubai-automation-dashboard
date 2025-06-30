@@ -162,17 +162,3 @@ export interface RealtimeUpdate {
   data: any;
   timestamp: string;
 }
-
-// Export all types
-export type {
-  AIAgent,
-  AgentCommunication,
-  AgentTask,
-  AgentMetrics,
-  AgentPerformance,
-  VoiceCall,
-  AgentConfiguration,
-  TeamOverview,
-  LeadInfo,
-  RealtimeUpdate
-};
