@@ -7,14 +7,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production --ignore-scripts
+# Install ALL dependencies (including devDependencies needed for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build the application (skip TypeScript type checking for demo)
-RUN npm run build-no-typecheck || npm run build
+# Build the application
+RUN npm run build
 
 # Production stage
 FROM nginx:alpine
