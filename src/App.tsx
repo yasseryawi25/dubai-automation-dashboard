@@ -1,319 +1,252 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import {
-  Phone,
-  MessageSquare,
-  Users,
-  TrendingUp,
-  Bot,
-  ArrowUp,
-  ArrowDown
-} from 'lucide-react';
+import { Bot, Bell, Settings, User } from 'lucide-react';
 
-// Types
-interface AIAgent {
-  id: string;
-  name: string;
-  type: 'manager' | 'coordinator' | 'basic';
-  status: 'active' | 'idle' | 'busy';
-  avatar: string;
-  specialty: string;
-  lastActivity: string;
-  tasksCompleted: number;
-  successRate: number;
-}
+// Import our AI Agent components
+import AgentDashboard from './components/features/AgentDashboard';
+import ManagerAgentChat from './components/features/ManagerAgentChat';
+import { agentAPI } from './services/agentAPI';
+import { vapiService } from './services/vapiService';
+import type { AIAgent } from './types/agents';
 
-interface AgentCardProps {
-  agent: AIAgent;
-  onClick: (agent: AIAgent) => void;
-}
-
-interface MetricCardProps {
-  title: string;
-  value: string;
-  change: string;
-  trend: 'up' | 'down';
-  icon: React.ReactNode;
-}
-
-// Sample data
-const sampleAgents: AIAgent[] = [
-  {
-    id: 'sarah-manager',
-    name: 'Sarah',
-    type: 'manager',
-    status: 'active',
-    avatar: '👩‍💼',
-    specialty: 'Strategic Analysis & Voice Calls',
-    lastActivity: 'Analyzing market trends',
-    tasksCompleted: 47,
-    successRate: 96
-  },
-  {
-    id: 'alex-coordinator',
-    name: 'Alex',
-    type: 'coordinator',
-    status: 'busy',
-    avatar: '👨‍💻',
-    specialty: 'Pipeline Coordination',
-    lastActivity: 'Coordinating 12 active leads',
-    tasksCompleted: 156,
-    successRate: 94
-  },
-  {
-    id: 'maya-coordinator',
-    name: 'Maya',
-    type: 'coordinator',
-    status: 'active',
-    avatar: '👩‍🎨',
-    specialty: 'Campaign Management',
-    lastActivity: 'Optimizing email sequences',
-    tasksCompleted: 203,
-    successRate: 92
-  },
-  {
-    id: 'omar-basic',
-    name: 'Omar',
-    type: 'basic',
-    status: 'active',
-    avatar: '👨‍🔬',
-    specialty: 'Lead Qualification',
-    lastActivity: 'Processing WhatsApp leads',
-    tasksCompleted: 89,
-    successRate: 88
-  },
-  {
-    id: 'layla-basic',
-    name: 'Layla',
-    type: 'basic',
-    status: 'idle',
-    avatar: '👩‍📋',
-    specialty: 'Follow-up Specialist',
-    lastActivity: 'Completed email sequence',
-    tasksCompleted: 134,
-    successRate: 91
-  },
-  {
-    id: 'ahmed-basic',
-    name: 'Ahmed',
-    type: 'basic',
-    status: 'busy',
-    avatar: '👨‍📅',
-    specialty: 'Appointment Scheduling',
-    lastActivity: 'Scheduling client meetings',
-    tasksCompleted: 67,
-    successRate: 89
-  }
-];
-
-// Components
-const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'busy': return 'bg-yellow-100 text-yellow-800';
-      case 'idle': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'manager': return 'bg-purple-100 text-purple-800';
-      case 'coordinator': return 'bg-blue-100 text-blue-800';
-      case 'basic': return 'bg-teal-100 text-teal-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTypeName = (type: string) => {
-    switch (type) {
-      case 'manager': return 'Manager Agent';
-      case 'coordinator': return 'Coordinator Agent';
-      case 'basic': return 'Specialist Agent';
-      default: return 'Agent';
-    }
-  };
-
-  return (
-    <div 
-      className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
-      onClick={() => onClick(agent)}
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="text-3xl">{agent.avatar}</div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">{agent.name}</h3>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(agent.type)}`}>
-              {getTypeName(agent.type)}
-            </span>
-          </div>
-        </div>
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(agent.status)}`}>
-          {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
-        </span>
-      </div>
-      
-      <div className="space-y-2">
-        <p className="text-sm text-gray-600 font-medium">{agent.specialty}</p>
-        <p className="text-sm text-gray-500">{agent.lastActivity}</p>
-        
-        <div className="flex justify-between items-center pt-3 mt-3 border-t border-gray-100">
-          <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900">{agent.tasksCompleted}</div>
-            <div className="text-xs text-gray-500">Tasks</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-semibold text-green-600">{agent.successRate}%</div>
-            <div className="text-xs text-gray-500">Success</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, trend, icon }) => (
-  <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-        <div className="flex items-center mt-2">
-          {trend === 'up' ? (
-            <ArrowUp className="h-4 w-4 text-green-500" />
-          ) : (
-            <ArrowDown className="h-4 w-4 text-red-500" />
-          )}
-          <span className={`text-sm font-medium ml-1 ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-            {change}
-          </span>
-          <span className="text-sm text-gray-500 ml-1">vs last month</span>
-        </div>
-      </div>
-      <div className="text-primary/20">
-        {icon}
-      </div>
-    </div>
-  </div>
-);
-
-// Main Dashboard Component
+// Main Dashboard Component with AI Agent Integration
 const Dashboard: React.FC = () => {
+  const [agents, setAgents] = useState<AIAgent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showManagerChat, setShowManagerChat] = useState(false);
 
-  const metrics = [
-    {
-      title: 'Active Leads',
-      value: '247',
-      change: '+23%',
-      trend: 'up' as const,
-      icon: <Users className="h-8 w-8" />
-    },
-    {
-      title: 'Calls Completed',
-      value: '89',
-      change: '+12%',
-      trend: 'up' as const,
-      icon: <Phone className="h-8 w-8" />
-    },
-    {
-      title: 'Messages Sent',
-      value: '1,456',
-      change: '+34%',
-      trend: 'up' as const,
-      icon: <MessageSquare className="h-8 w-8" />
-    },
-    {
-      title: 'Conversion Rate',
-      value: '18.5%',
-      change: '+5.2%',
-      trend: 'up' as const,
-      icon: <TrendingUp className="h-8 w-8" />
+  useEffect(() => {
+    loadAgents();
+  }, []);
+
+  const loadAgents = async () => {
+    try {
+      setLoading(true);
+      const agentData = await agentAPI.getAgents();
+      setAgents(agentData);
+    } catch (error) {
+      console.error('Failed to load agents:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  // Group agents by type
-  const managerAgents = sampleAgents.filter(agent => agent.type === 'manager');
-  const coordinatorAgents = sampleAgents.filter(agent => agent.type === 'coordinator');
-  const basicAgents = sampleAgents.filter(agent => agent.type === 'basic');
+  const handleAgentSelect = (agent: AIAgent) => {
+    setSelectedAgent(agent);
+    
+    // If it's Sarah (Manager Agent), show the chat interface
+    if (agent.id === 'sarah-manager' || agent.type === 'manager') {
+      setShowManagerChat(true);
+    }
+  };
 
-  const AgentSection: React.FC<{ title: string; agents: AIAgent[]; description: string }> = ({ title, agents, description }) => (
-    <div className="mb-8">
-      <div className="flex items-center space-x-2 mb-4">
-        <Bot className="h-6 w-6 text-primary" />
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-        <span className="text-sm text-gray-500">({agents.length})</span>
+  const handleVoiceCall = async (phoneNumber?: string) => {
+    if (!phoneNumber) {
+      // For demo purposes, use a sample number
+      phoneNumber = '+971501234567';
+    }
+
+    try {
+      console.log('Initiating voice call to:', phoneNumber);
+      
+      // Validate phone number
+      if (!vapiService.validatePhoneNumber(phoneNumber)) {
+        alert('Please enter a valid phone number');
+        return;
+      }
+
+      // Format phone number
+      const formattedNumber = vapiService.formatPhoneNumber(phoneNumber);
+      
+      // Create call via VAPI
+      const callResponse = await vapiService.createCall({
+        phoneNumber: formattedNumber,
+        language: 'bilingual', // Sarah can handle both Arabic and English
+        customerInfo: {
+          name: 'Dubai Real Estate Client',
+          context: 'Manager Agent consultation call',
+          previousInteraction: false
+        }
+      });
+
+      console.log('Call initiated:', callResponse);
+      alert(`Voice call initiated! Call ID: ${callResponse.id}`);
+      
+    } catch (error) {
+      console.error('Voice call failed:', error);
+      alert('Voice call failed. Please check your VAPI configuration.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
-      <p className="text-sm text-gray-600 mb-4">{description}</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {agents.map((agent) => (
-          <AgentCard key={agent.id} agent={agent} onClick={setSelectedAgent} />
-        ))}
-      </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">AI Real Estate Agent Team</h1>
-        <p className="text-blue-100 text-lg">
-          Your complete AI-powered team managing leads, calls, and client relationships 24/7
-        </p>
-        <div className="mt-4 flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-sm">All systems operational</span>
+      {/* Enhanced Header with Real-time Status */}
+      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-lg p-8 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black opacity-10"></div>
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">AI Real Estate Agent Team</h1>
+              <p className="text-blue-100 text-lg">
+                Your complete AI-powered team replacing AED 22,000/month human staff
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold">AED 1,497/month</div>
+              <div className="text-sm text-blue-200">93% cost savings</div>
+            </div>
           </div>
-          <div className="text-sm">
-            6 agents active • Processing {Math.floor(Math.random() * 50) + 20} tasks
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">System Status</span>
+              </div>
+              <div className="text-xl font-bold">All Operational</div>
+              <div className="text-xs text-blue-200">6 agents active</div>
+            </div>
+            
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="text-sm font-medium mb-2">Today's Activity</div>
+              <div className="text-xl font-bold">{Math.floor(Math.random() * 50) + 30} Tasks</div>
+              <div className="text-xs text-blue-200">Processing in real-time</div>
+            </div>
+            
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="text-sm font-medium mb-2">Manager Agent</div>
+              <div className="text-xl font-bold">Sarah Available</div>
+              <div className="text-xs text-blue-200">Ready for voice calls</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {metrics.map((metric, index) => (
-          <MetricCard key={index} {...metric} />
-        ))}
-      </div>
+      {/* Manager Agent Quick Access */}
+      {agents.find(a => a.type === 'manager') && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="text-4xl">👩‍💼</div>
+              <div>
+                <h3 className="text-lg font-semibold text-purple-900">
+                  Sarah Al-Mansouri - Your Manager Agent
+                </h3>
+                <p className="text-purple-700">
+                  Personal AI assistant with voice calling • Speaks Arabic & English
+                </p>
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowManagerChat(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Chat with Sarah
+              </button>
+              <button
+                onClick={() => handleVoiceCall()}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Voice Call
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Agent Teams */}
-      <div>
-        <AgentSection
-          title="Manager Agents"
-          agents={managerAgents}
-          description="Strategic oversight, voice consultations, and high-level decision making"
-        />
-        
-        <AgentSection
-          title="Coordinator Agents"
-          agents={coordinatorAgents}
-          description="Orchestrate multi-step processes and manage complex workflows"
-        />
-        
-        <AgentSection
-          title="Specialist Agents"
-          agents={basicAgents}
-          description="Handle specific tasks with expertise in lead processing and client management"
-        />
-      </div>
+      {/* Main Agent Dashboard */}
+      <AgentDashboard agents={agents} onAgentSelect={handleAgentSelect} />
 
-      {/* Agent Modal would go here */}
-      {selectedAgent && (
+      {/* Manager Agent Chat Modal */}
+      {showManagerChat && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold">Sarah Al-Mansouri - Manager Agent</h2>
+              <button
+                onClick={() => setShowManagerChat(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <ManagerAgentChat 
+                agentId="sarah-manager" 
+                onVoiceCall={handleVoiceCall}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Agent Details Modal */}
+      {selectedAgent && !showManagerChat && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">{selectedAgent.name} - Agent Details</h3>
-            <p className="text-gray-600 mb-4">Detailed agent interaction would go here...</p>
-            <button
-              onClick={() => setSelectedAgent(null)}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Close
-            </button>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="text-3xl">{selectedAgent.avatar}</div>
+              <div>
+                <h3 className="text-lg font-semibold">{selectedAgent.name}</h3>
+                <p className="text-sm text-gray-600">{selectedAgent.specialty}</p>
+              </div>
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Status:</span>
+                <span className={`text-sm font-medium ${
+                  selectedAgent.status === 'active' ? 'text-green-600' : 
+                  selectedAgent.status === 'busy' ? 'text-yellow-600' : 'text-gray-600'
+                }`}>
+                  {selectedAgent.status.charAt(0).toUpperCase() + selectedAgent.status.slice(1)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Tasks Completed:</span>
+                <span className="text-sm font-medium">{selectedAgent.tasksCompleted}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Success Rate:</span>
+                <span className="text-sm font-medium text-green-600">{selectedAgent.successRate}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Last Activity:</span>
+                <span className="text-sm">{selectedAgent.lastActivity}</span>
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              {selectedAgent.type === 'manager' && (
+                <button
+                  onClick={() => {
+                    setSelectedAgent(null);
+                    setShowManagerChat(true);
+                  }}
+                  className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Chat with {selectedAgent.name}
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedAgent(null)}
+                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -326,7 +259,7 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
+        {/* Enhanced Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -334,14 +267,43 @@ const App: React.FC = () => {
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  Dubai Real Estate AI Platform
-                </h1>
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-900">
+                    Dubai Real Estate AI Platform
+                  </h1>
+                  <div className="text-xs text-gray-500">
+                    Demo Client - Premium Package
+                  </div>
+                </div>
               </div>
+              
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-500">Welcome back, Yasser</span>
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  Y
+                {/* Quick status indicators */}
+                <div className="hidden md:flex items-center space-x-4 text-sm text-gray-600">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>6 Agents Active</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>Real-time Processing</span>
+                  </div>
+                </div>
+                
+                {/* Action buttons */}
+                <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                  <Bell className="h-5 w-5" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                  <Settings className="h-5 w-5" />
+                </button>
+                
+                {/* User profile */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-700 hidden sm:inline">Demo Client</span>
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                    <User className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -354,6 +316,16 @@ const App: React.FC = () => {
             <Route path="/" element={<Dashboard />} />
           </Routes>
         </main>
+
+        {/* Footer */}
+        <footer className="bg-white border-t border-gray-200 mt-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="text-center text-sm text-gray-500">
+              Dubai Real Estate AI Platform - Demo Environment • 
+              <span className="text-blue-600 ml-1">Powered by n8n + AI Agent Technology</span>
+            </div>
+          </div>
+        </footer>
       </div>
     </Router>
   );

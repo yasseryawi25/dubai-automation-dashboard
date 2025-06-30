@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build: .
+    container_name: ${COOLIFY_CONTAINER_NAME:-ai-agent-dashboard}
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${VITE_API_URL:-https://api.yasta.online}
+      - VITE_APP_NAME=${VITE_APP_NAME:-AI Real Estate Team}
+      - VITE_CLIENT_ID=${VITE_CLIENT_ID:-demo_client}
+      - VITE_MOCK_DATA=${VITE_MOCK_DATA:-true}
+    networks:
+      - coolify
+    labels:
+      - "coolify.managed=true"
+      - "coolify.version=1"
+      - "coolify.type=application"
+    restart: unless-stopped
+    # CRITICAL: No ports section - let Coolify/Traefik handle routing
+    expose:
+      - "80"
+
+networks:
+  coolify:
+    external: true
