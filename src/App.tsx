@@ -1,480 +1,362 @@
-// src/App.tsx - Complete AI Agent Dashboard
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  MessageCircle, 
-  TrendingUp, 
-  Settings,
+import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import {
   Phone,
-  Calendar,
-  BarChart3,
-  Activity,
-  Send,
-  Mic,
-  Clock,
-  CheckCircle
+  MessageSquare,
+  Users,
+  TrendingUp,
+  Bot,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
-// Mock AI Agent Data
-const mockAgents = [
+// Types
+interface AIAgent {
+  id: string;
+  name: string;
+  type: 'manager' | 'coordinator' | 'basic';
+  status: 'active' | 'idle' | 'busy';
+  avatar: string;
+  specialty: string;
+  lastActivity: string;
+  tasksCompleted: number;
+  successRate: number;
+}
+
+interface AgentCardProps {
+  agent: AIAgent;
+  onClick: (agent: AIAgent) => void;
+}
+
+interface MetricCardProps {
+  title: string;
+  value: string;
+  change: string;
+  trend: 'up' | 'down';
+  icon: React.ReactNode;
+}
+
+// Sample data
+const sampleAgents: AIAgent[] = [
   {
-    id: 1,
-    agent_name: 'Sarah',
-    agent_type: 'manager',
-    agent_role: 'Manager Agent',
+    id: 'sarah-manager',
+    name: 'Sarah',
+    type: 'manager',
     status: 'active',
-    capabilities: { voice_calling: true, strategic_analysis: true, client_consultation: true },
-    tasks_completed: 42,
-    communications_handled: 156,
-    leads_processed: 28,
-    response_time_avg: '2 minutes'
+    avatar: '👩‍💼',
+    specialty: 'Strategic Analysis & Voice Calls',
+    lastActivity: 'Analyzing market trends',
+    tasksCompleted: 47,
+    successRate: 96
   },
   {
-    id: 2,
-    agent_name: 'Alex',
-    agent_type: 'coordinator',
-    agent_role: 'Pipeline Coordinator',
-    status: 'active',
-    capabilities: { lead_routing: true, workflow_orchestration: true, performance_monitoring: true },
-    tasks_completed: 38,
-    communications_handled: 124,
-    leads_processed: 22,
-    response_time_avg: '4 minutes'
-  },
-  {
-    id: 3,
-    agent_name: 'Maya',
-    agent_type: 'coordinator',
-    agent_role: 'Campaign Coordinator',
+    id: 'alex-coordinator',
+    name: 'Alex',
+    type: 'coordinator',
     status: 'busy',
-    capabilities: { campaign_management: true, social_media: true, content_creation: true },
-    tasks_completed: 31,
-    communications_handled: 89,
-    leads_processed: 15,
-    response_time_avg: '6 minutes'
+    avatar: '👨‍💻',
+    specialty: 'Pipeline Coordination',
+    lastActivity: 'Coordinating 12 active leads',
+    tasksCompleted: 156,
+    successRate: 94
   },
   {
-    id: 4,
-    agent_name: 'Omar',
-    agent_type: 'basic',
-    agent_role: 'Lead Qualification Agent',
+    id: 'maya-coordinator',
+    name: 'Maya',
+    type: 'coordinator',
     status: 'active',
-    capabilities: { lead_scoring: true, initial_contact: true, data_collection: true },
-    tasks_completed: 67,
-    communications_handled: 203,
-    leads_processed: 58,
-    response_time_avg: '3 minutes'
+    avatar: '👩‍🎨',
+    specialty: 'Campaign Management',
+    lastActivity: 'Optimizing email sequences',
+    tasksCompleted: 203,
+    successRate: 92
   },
   {
-    id: 5,
-    agent_name: 'Layla',
-    agent_type: 'basic',
-    agent_role: 'Follow-up Specialist',
+    id: 'omar-basic',
+    name: 'Omar',
+    type: 'basic',
     status: 'active',
-    capabilities: { email_sequences: true, relationship_building: true, client_retention: true },
-    tasks_completed: 54,
-    communications_handled: 178,
-    leads_processed: 41,
-    response_time_avg: '5 minutes'
+    avatar: '👨‍🔬',
+    specialty: 'Lead Qualification',
+    lastActivity: 'Processing WhatsApp leads',
+    tasksCompleted: 89,
+    successRate: 88
   },
   {
-    id: 6,
-    agent_name: 'Ahmed',
-    agent_type: 'basic',
-    agent_role: 'Appointment Agent',
-    status: 'active',
-    capabilities: { calendar_management: true, appointment_scheduling: true, reminder_systems: true },
-    tasks_completed: 29,
-    communications_handled: 95,
-    leads_processed: 18,
-    response_time_avg: '7 minutes'
+    id: 'layla-basic',
+    name: 'Layla',
+    type: 'basic',
+    status: 'idle',
+    avatar: '👩‍📋',
+    specialty: 'Follow-up Specialist',
+    lastActivity: 'Completed email sequence',
+    tasksCompleted: 134,
+    successRate: 91
+  },
+  {
+    id: 'ahmed-basic',
+    name: 'Ahmed',
+    type: 'basic',
+    status: 'busy',
+    avatar: '👨‍📅',
+    specialty: 'Appointment Scheduling',
+    lastActivity: 'Scheduling client meetings',
+    tasksCompleted: 67,
+    successRate: 89
   }
 ];
 
-// Agent Card Component
-const AgentCard = ({ agent, onClick }) => {
-  const getStatusColor = (status) => {
+// Components
+const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-500';
-      case 'busy': return 'bg-yellow-500';
-      case 'inactive': return 'bg-gray-500';
-      default: return 'bg-gray-500';
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'busy': return 'bg-yellow-100 text-yellow-800';
+      case 'idle': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getAgentTypeIcon = (type) => {
+  const getTypeColor = (type: string) => {
     switch (type) {
-      case 'manager': return <Phone className="w-5 h-5" />;
-      case 'coordinator': return <TrendingUp className="w-5 h-5" />;
-      case 'basic': return <MessageCircle className="w-5 h-5" />;
-      default: return <MessageCircle className="w-5 h-5" />;
+      case 'manager': return 'bg-purple-100 text-purple-800';
+      case 'coordinator': return 'bg-blue-100 text-blue-800';
+      case 'basic': return 'bg-teal-100 text-teal-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getAgentTypeColor = (type) => {
+  const getTypeName = (type: string) => {
     switch (type) {
-      case 'manager': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'coordinator': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'basic': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'manager': return 'Manager Agent';
+      case 'coordinator': return 'Coordinator Agent';
+      case 'basic': return 'Specialist Agent';
+      default: return 'Agent';
     }
   };
 
   return (
     <div 
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-      onClick={onClick}
+      className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
+      onClick={() => onClick(agent)}
     >
-      {/* Agent Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-lg ${getAgentTypeColor(agent.agent_type)}`}>
-            {getAgentTypeIcon(agent.agent_type)}
-          </div>
+          <div className="text-3xl">{agent.avatar}</div>
           <div>
-            <h3 className="font-semibold text-gray-900">{agent.agent_name}</h3>
-            <p className="text-sm text-gray-600">{agent.agent_role}</p>
+            <h3 className="text-lg font-semibold text-gray-900">{agent.name}</h3>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(agent.type)}`}>
+              {getTypeName(agent.type)}
+            </span>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${getStatusColor(agent.status)}`}></div>
-          <span className="text-sm text-gray-600 capitalize">{agent.status}</span>
-        </div>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(agent.status)}`}>
+          {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+        </span>
       </div>
-
-      {/* Agent Capabilities */}
-      <div className="mb-4">
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(agent.capabilities).map(([key, value]) => 
-            value && (
-              <span 
-                key={key}
-                className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-              >
-                {key.replace('_', ' ')}
-              </span>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <div className="text-gray-600">Tasks Completed</div>
-          <div className="font-semibold text-green-600">{agent.tasks_completed}</div>
-        </div>
-        <div>
-          <div className="text-gray-600">Communications</div>
-          <div className="font-semibold text-blue-600">{agent.communications_handled}</div>
-        </div>
-        <div>
-          <div className="text-gray-600">Leads Processed</div>
-          <div className="font-semibold text-purple-600">{agent.leads_processed}</div>
-        </div>
-        <div>
-          <div className="text-gray-600">Avg Response</div>
-          <div className="font-semibold text-orange-600">{agent.response_time_avg}</div>
+      
+      <div className="space-y-2">
+        <p className="text-sm text-gray-600 font-medium">{agent.specialty}</p>
+        <p className="text-sm text-gray-500">{agent.lastActivity}</p>
+        
+        <div className="flex justify-between items-center pt-3 mt-3 border-t border-gray-100">
+          <div className="text-center">
+            <div className="text-lg font-semibold text-gray-900">{agent.tasksCompleted}</div>
+            <div className="text-xs text-gray-500">Tasks</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-semibold text-green-600">{agent.successRate}%</div>
+            <div className="text-xs text-gray-500">Success</div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// Manager Agent Chat Component
-const ManagerAgentChat = ({ agentName = 'Sarah' }) => {
-  const [message, setMessage] = useState('');
-  const [communications, setCommunications] = useState([
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, trend, icon }) => (
+  <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+        <div className="flex items-center mt-2">
+          {trend === 'up' ? (
+            <ArrowUp className="h-4 w-4 text-green-500" />
+          ) : (
+            <ArrowDown className="h-4 w-4 text-red-500" />
+          )}
+          <span className={`text-sm font-medium ml-1 ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+            {change}
+          </span>
+          <span className="text-sm text-gray-500 ml-1">vs last month</span>
+        </div>
+      </div>
+      <div className="text-primary/20">
+        {icon}
+      </div>
+    </div>
+  </div>
+);
+
+// Main Dashboard Component
+const Dashboard: React.FC = () => {
+  const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
+
+  const metrics = [
     {
-      id: 1,
-      direction: 'outbound',
-      content: `Hello! I'm ${agentName}, your AI Manager Agent. I'm here to help you analyze your real estate performance and provide strategic insights. How can I assist you today?`,
-      created_at: new Date().toISOString(),
+      title: 'Active Leads',
+      value: '247',
+      change: '+23%',
+      trend: 'up' as const,
+      icon: <Users className="h-8 w-8" />
+    },
+    {
+      title: 'Calls Completed',
+      value: '89',
+      change: '+12%',
+      trend: 'up' as const,
+      icon: <Phone className="h-8 w-8" />
+    },
+    {
+      title: 'Messages Sent',
+      value: '1,456',
+      change: '+34%',
+      trend: 'up' as const,
+      icon: <MessageSquare className="h-8 w-8" />
+    },
+    {
+      title: 'Conversion Rate',
+      value: '18.5%',
+      change: '+5.2%',
+      trend: 'up' as const,
+      icon: <TrendingUp className="h-8 w-8" />
     }
-  ]);
+  ];
 
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
+  // Group agents by type
+  const managerAgents = sampleAgents.filter(agent => agent.type === 'manager');
+  const coordinatorAgents = sampleAgents.filter(agent => agent.type === 'coordinator');
+  const basicAgents = sampleAgents.filter(agent => agent.type === 'basic');
 
-    // Add user message
-    const userMessage = {
-      id: communications.length + 1,
-      direction: 'inbound',
-      content: message,
-      created_at: new Date().toISOString(),
-    };
-
-    setCommunications(prev => [...prev, userMessage]);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = [
-        "Based on your current performance metrics, I recommend focusing on lead qualification automation. Your conversion rate could improve by 35% with better initial screening.",
-        "I've analyzed your pipeline data. You have 12 high-priority leads that need immediate follow-up. Should I have Layla (Follow-up Specialist) contact them today?",
-        "Market analysis shows Dubai Marina properties are trending 15% higher this week. I suggest having Maya (Campaign Coordinator) create targeted content for this area.",
-        "Your appointment booking rate is excellent! Ahmed has scheduled 8 viewings for tomorrow. Would you like me to prepare property briefings for each appointment?",
-        "I notice you're spending too much time on admin tasks. I can automate 70% of your daily workflows. Would you like me to set this up with Alex (Pipeline Coordinator)?",
-      ];
-      
-      const aiResponse = {
-        id: communications.length + 2,
-        direction: 'outbound',
-        content: responses[Math.floor(Math.random() * responses.length)],
-        created_at: new Date().toISOString(),
-      };
-      setCommunications(prev => [...prev, aiResponse]);
-    }, 1500);
-
-    setMessage('');
-  };
-
-  const handleVoiceCall = () => {
-    alert(`Initiating voice call with ${agentName}... (VAPI integration will be implemented here)`);
-  };
+  const AgentSection: React.FC<{ title: string; agents: AIAgent[]; description: string }> = ({ title, agents, description }) => (
+    <div className="mb-8">
+      <div className="flex items-center space-x-2 mb-4">
+        <Bot className="h-6 w-6 text-primary" />
+        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <span className="text-sm text-gray-500">({agents.length})</span>
+      </div>
+      <p className="text-sm text-gray-600 mb-4">{description}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {agents.map((agent) => (
+          <AgentCard key={agent.id} agent={agent} onClick={setSelectedAgent} />
+        ))}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-96 flex flex-col">
-      {/* Chat Header */}
-      <div className="border-b border-gray-200 p-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
-            <Phone className="w-5 h-5" />
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-8 text-white">
+        <h1 className="text-3xl font-bold mb-2">AI Real Estate Agent Team</h1>
+        <p className="text-blue-100 text-lg">
+          Your complete AI-powered team managing leads, calls, and client relationships 24/7
+        </p>
+        <div className="mt-4 flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+            <span className="text-sm">All systems operational</span>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">{agentName}</h3>
-            <div className="flex items-center space-x-1 text-sm text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Online</span>
-            </div>
+          <div className="text-sm">
+            6 agents active • Processing {Math.floor(Math.random() * 50) + 20} tasks
           </div>
         </div>
-        <button
-          onClick={handleVoiceCall}
-          className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Mic className="w-4 h-4" />
-          <span>Voice Call</span>
-        </button>
       </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {communications.map((comm) => (
-          <div
-            key={comm.id}
-            className={`flex ${comm.direction === 'inbound' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                comm.direction === 'inbound'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-900'
-              }`}
-            >
-              <p className="text-sm">{comm.content}</p>
-              <div className="flex items-center justify-end space-x-1 mt-1">
-                <Clock className="w-3 h-3 opacity-50" />
-                <span className="text-xs opacity-75">
-                  {new Date(comm.created_at).toLocaleTimeString()}
-                </span>
-                {comm.direction === 'inbound' && (
-                  <CheckCircle className="w-3 h-3 opacity-50" />
-                )}
-              </div>
-            </div>
-          </div>
+      {/* Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {metrics.map((metric, index) => (
+          <MetricCard key={index} {...metric} />
         ))}
       </div>
 
-      {/* Chat Input */}
-      <div className="border-t border-gray-200 p-4">
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder="Ask your Manager Agent anything..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!message.trim()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
+      {/* Agent Teams */}
+      <div>
+        <AgentSection
+          title="Manager Agents"
+          agents={managerAgents}
+          description="Strategic oversight, voice consultations, and high-level decision making"
+        />
+        
+        <AgentSection
+          title="Coordinator Agents"
+          agents={coordinatorAgents}
+          description="Orchestrate multi-step processes and manage complex workflows"
+        />
+        
+        <AgentSection
+          title="Specialist Agents"
+          agents={basicAgents}
+          description="Handle specific tasks with expertise in lead processing and client management"
+        />
       </div>
+
+      {/* Agent Modal would go here */}
+      {selectedAgent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">{selectedAgent.name} - Agent Details</h3>
+            <p className="text-gray-600 mb-4">Detailed agent interaction would go here...</p>
+            <button
+              onClick={() => setSelectedAgent(null)}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 // Main App Component
-function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
-
-  // Group agents by type
-  const managerAgents = mockAgents.filter(agent => agent.agent_type === 'manager');
-  const coordinatorAgents = mockAgents.filter(agent => agent.agent_type === 'coordinator');
-  const basicAgents = mockAgents.filter(agent => agent.agent_type === 'basic');
-
-  // Calculate summary stats
-  const totalAgents = mockAgents.length;
-  const activeAgents = mockAgents.filter(agent => agent.status === 'active').length;
-  const totalTasks = mockAgents.reduce((sum, agent) => sum + agent.tasks_completed, 0);
-  const totalCommunications = mockAgents.reduce((sum, agent) => sum + agent.communications_handled, 0);
-
+const App: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-white" />
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-white" />
+                </div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  Dubai Real Estate AI Platform
+                </h1>
               </div>
-              <h1 className="text-xl font-bold text-gray-900">AI Real Estate Team</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>{activeAgents} Agents Active</span>
-              </div>
-              
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-700">Demo</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="p-6">
-        {/* Welcome Message */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-2">Welcome to Your AI Real Estate Team</h2>
-          <p className="text-blue-100">
-            Your {totalAgents} AI agents are working 24/7 to grow your business. Monitor their performance and interact with your Manager Agent below.
-          </p>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
-                <Users className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <div className="text-sm text-gray-600">Total Agents</div>
-                <div className="text-2xl font-bold text-gray-900">{totalAgents}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 text-green-600 rounded-lg">
-                <Activity className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <div className="text-sm text-gray-600">Active Agents</div>
-                <div className="text-2xl font-bold text-gray-900">{activeAgents}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <div className="text-sm text-gray-600">Tasks Today</div>
-                <div className="text-2xl font-bold text-gray-900">{totalTasks}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-100 text-orange-600 rounded-lg">
-                <MessageCircle className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <div className="text-sm text-gray-600">Communications</div>
-                <div className="text-2xl font-bold text-gray-900">{totalCommunications}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Agent Overview and Manager Chat */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-          {/* Agent Team Overview */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-gray-900">AI Agent Team</h2>
-            
-            {/* Manager Agents */}
-            {managerAgents.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Phone className="w-5 h-5 mr-2 text-purple-600" />
-                  Manager Agent
-                </h3>
-                <div className="space-y-4">
-                  {managerAgents.map(agent => (
-                    <AgentCard key={agent.id} agent={agent} onClick={() => {}} />
-                  ))}
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-500">Welcome back, Yasser</span>
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                  Y
                 </div>
               </div>
-            )}
-
-            {/* Coordinator Agents */}
-            {coordinatorAgents.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
-                  Coordinator Agents
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {coordinatorAgents.map(agent => (
-                    <AgentCard key={agent.id} agent={agent} onClick={() => {}} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Basic Agents */}
-            {basicAgents.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <MessageCircle className="w-5 h-5 mr-2 text-green-600" />
-                  Specialist Agents
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {basicAgents.map(agent => (
-                    <AgentCard key={agent.id} agent={agent} onClick={() => {}} />
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
-          
-          {/* Manager Agent Chat */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Chat with Sarah - Manager Agent</h3>
-            <ManagerAgentChat agentName="Sarah" />
-          </div>
-        </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+          </Routes>
+        </main>
       </div>
-    </div>
+    </Router>
   );
-}
+};
 
 export default App;

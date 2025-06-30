@@ -1,126 +1,163 @@
-// src/components/features/ManagerAgentChat.tsx
 import React, { useState } from 'react';
-import { Send, Phone, Mic, Clock, CheckCircle } from 'lucide-react';
-import { AgentCommunication } from '../../services/agentAPI';
+import { Send, Phone, Mic, TrendingUp, AlertCircle } from 'lucide-react';
+import type { AgentCommunication } from '../../types/agents';
 
 interface ManagerAgentChatProps {
-  agentId: number;
-  agentName: string;
+  agentId: string;
+  onVoiceCall?: () => void;
 }
 
-export const ManagerAgentChat: React.FC<ManagerAgentChatProps> = ({ agentId, agentName }) => {
+const ManagerAgentChat: React.FC<ManagerAgentChatProps> = ({ agentId, onVoiceCall }) => {
   const [message, setMessage] = useState('');
   const [communications, setCommunications] = useState<AgentCommunication[]>([
     {
-      id: 1,
-      agent_id: agentId,
-      communication_type: 'chat',
-      direction: 'outbound',
-      content: `Hello! I'm ${agentName}, your AI Manager Agent. I'm here to help you analyze your real estate performance and provide strategic insights. How can I assist you today?`,
-      metadata: {},
-      client_contact_info: {},
-      created_at: new Date().toISOString(),
+      id: '1',
+      agentId: 'sarah-manager',
+      type: 'insight',
+      content: 'Good morning! I\'ve analyzed last week\'s performance. Your lead conversion rate improved by 15%. The most effective approach was the Arabic-English bilingual messaging.',
+      timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      metadata: {
+        insight_type: 'performance',
+        confidence: 0.92
+      }
+    },
+    {
+      id: '2',
+      agentId: 'sarah-manager',
+      type: 'recommendation',
+      content: 'I recommend focusing on Downtown Dubai properties this week. Market analysis shows 23% higher inquiry rates. Shall I adjust the campaign targeting?',
+      timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+      metadata: {
+        action_required: true,
+        market_area: 'Downtown Dubai'
+      }
+    },
+    {
+      id: '3',
+      agentId: 'sarah-manager',
+      type: 'alert',
+      content: 'High-priority lead detected: Investment inquiry for AED 5M+ portfolio. Client prefers voice consultation. Should I schedule a call?',
+      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+      metadata: {
+        priority: 'high',
+        value: '5000000',
+        action_required: true
+      }
     }
   ]);
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
-    // Add user message
-    const userMessage: AgentCommunication = {
-      id: communications.length + 1,
-      agent_id: agentId,
-      communication_type: 'chat',
-      direction: 'inbound',
+    const newMessage: AgentCommunication = {
+      id: Date.now().toString(),
+      agentId: 'user',
+      type: 'message',
       content: message,
-      metadata: {},
-      client_contact_info: {},
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      metadata: {}
     };
 
-    setCommunications(prev => [...prev, userMessage]);
+    setCommunications(prev => [...prev, newMessage]);
+    setMessage('');
 
     // Simulate AI response
     setTimeout(() => {
       const aiResponse: AgentCommunication = {
-        id: communications.length + 2,
-        agent_id: agentId,
-        communication_type: 'chat',
-        direction: 'outbound',
-        content: getAIResponse(message),
-        metadata: {},
-        client_contact_info: {},
-        created_at: new Date().toISOString(),
+        id: (Date.now() + 1).toString(),
+        agentId: agentId,
+        type: 'response',
+        content: 'I understand your request. Let me analyze the current situation and provide you with actionable insights.',
+        timestamp: new Date().toISOString(),
+        metadata: {
+          response_to: newMessage.id
+        }
       };
       setCommunications(prev => [...prev, aiResponse]);
-    }, 1500);
-
-    setMessage('');
+    }, 1000);
   };
 
-  const getAIResponse = (userMessage: string): string => {
-    const responses = [
-      "Based on your current performance metrics, I recommend focusing on lead qualification automation. Your conversion rate could improve by 35% with better initial screening.",
-      "I've analyzed your pipeline data. You have 12 high-priority leads that need immediate follow-up. Should I have Layla (Follow-up Specialist) contact them today?",
-      "Market analysis shows Dubai Marina properties are trending 15% higher this week. I suggest having Maya (Campaign Coordinator) create targeted content for this area.",
-      "Your appointment booking rate is excellent! Ahmed has scheduled 8 viewings for tomorrow. Would you like me to prepare property briefings for each appointment?",
-      "I notice you're spending too much time on admin tasks. I can automate 70% of your daily workflows. Would you like me to set this up with Alex (Pipeline Coordinator)?",
-    ];
-    
-    return responses[Math.floor(Math.random() * responses.length)];
+  const getMessageIcon = (type: string) => {
+    switch (type) {
+      case 'insight':
+        return <TrendingUp className="h-4 w-4 text-blue-600" />;
+      case 'recommendation':
+        return <TrendingUp className="h-4 w-4 text-green-600" />;
+      case 'alert':
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return null;
+    }
   };
 
-  const handleVoiceCall = () => {
-    alert(`Initiating voice call with ${agentName}... (VAPI integration will be implemented here)`);
+  const getMessageBg = (type: string) => {
+    switch (type) {
+      case 'insight':
+        return 'bg-blue-50 border-blue-200';
+      case 'recommendation':
+        return 'bg-green-50 border-green-200';
+      case 'alert':
+        return 'bg-red-50 border-red-200';
+      case 'message':
+        return 'bg-gray-100 border-gray-200';
+      default:
+        return 'bg-white border-gray-200';
+    }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-96 flex flex-col">
-      {/* Chat Header */}
-      <div className="border-b border-gray-200 p-4 flex items-center justify-between">
+    <div className="bg-white rounded-lg shadow-md h-96 flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
-            <Phone className="w-5 h-5" />
-          </div>
+          <div className="text-2xl">👩‍💼</div>
           <div>
-            <h3 className="font-semibold text-gray-900">{agentName}</h3>
-            <div className="flex items-center space-x-1 text-sm text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Online</span>
-            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Sarah - Manager Agent</h3>
+            <p className="text-sm text-gray-500">Strategic Analysis & Voice Calls</p>
           </div>
         </div>
-        <button
-          onClick={handleVoiceCall}
-          className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Mic className="w-4 h-4" />
-          <span>Voice Call</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onVoiceCall}
+            className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
+            title="Start Voice Call"
+          >
+            <Phone className="h-4 w-4" />
+          </button>
+          <button
+            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+            title="Voice Message"
+          >
+            <Mic className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages */}
+      <div className="flex-1 p-4 overflow-y-auto space-y-3">
         {communications.map((comm) => (
           <div
             key={comm.id}
-            className={`flex ${comm.direction === 'inbound' ? 'justify-end' : 'justify-start'}`}
+            className={`p-3 rounded-lg border ${getMessageBg(comm.type)} ${
+              comm.agentId === 'user' ? 'ml-8' : 'mr-8'
+            }`}
           >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                comm.direction === 'inbound'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-900'
-              }`}
-            >
-              <p className="text-sm">{comm.content}</p>
-              <div className="flex items-center justify-end space-x-1 mt-1">
-                <Clock className="w-3 h-3 opacity-50" />
-                <span className="text-xs opacity-75">
-                  {new Date(comm.created_at).toLocaleTimeString()}
-                </span>
-                {comm.direction === 'inbound' && (
-                  <CheckCircle className="w-3 h-3 opacity-50" />
+            <div className="flex items-start space-x-2">
+              {comm.agentId !== 'user' && getMessageIcon(comm.type)}
+              <div className="flex-1">
+                <p className="text-sm text-gray-900">{comm.content}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(comm.timestamp).toLocaleTimeString()}
+                </p>
+                {comm.metadata.action_required && (
+                  <div className="mt-2 flex space-x-2">
+                    <button className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">
+                      Accept
+                    </button>
+                    <button className="text-xs bg-gray-300 text-gray-700 px-2 py-1 rounded hover:bg-gray-400">
+                      Review
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -128,26 +165,31 @@ export const ManagerAgentChat: React.FC<ManagerAgentChatProps> = ({ agentId, age
         ))}
       </div>
 
-      {/* Chat Input */}
-      <div className="border-t border-gray-200 p-4">
-        <div className="flex space-x-2">
+      {/* Input */}
+      <div className="p-4 border-t border-gray-200">
+        <div className="flex items-center space-x-2">
           <input
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder="Ask your Manager Agent anything..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+            placeholder="Ask Sarah about strategy, performance, or market insights..."
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <button
             onClick={handleSendMessage}
             disabled={!message.trim()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Send className="w-4 h-4" />
+            <Send className="h-4 w-4" />
           </button>
         </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Sarah responds with market insights, strategic recommendations, and can make voice calls to clients.
+        </p>
       </div>
     </div>
   );
 };
+
+export default ManagerAgentChat;

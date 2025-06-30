@@ -1,146 +1,156 @@
-// src/components/features/AgentDashboard.tsx
 import React, { useState } from 'react';
-import { Users, Activity, MessageSquare, TrendingUp, Phone } from 'lucide-react';
-import { AgentCard } from './AgentCard';
-import { useAgents } from '../../services/agentAPI';
+import { Bot, Users, TrendingUp, MessageSquare } from 'lucide-react';
+import AgentCard from './AgentCard';
+import type { AIAgent } from '../../types/agents';
 
-export const AgentDashboard: React.FC = () => {
-  const { data: agents, isLoading, error } = useAgents();
-  const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
+interface AgentDashboardProps {
+  agents: AIAgent[];
+  onAgentSelect: (agent: AIAgent) => void;
+}
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+const AgentDashboard: React.FC<AgentDashboardProps> = ({ agents, onAgentSelect }) => {
+  const [filterType, setFilterType] = useState<string>('all');
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">Error loading agents: {error}</p>
-      </div>
-    );
-  }
+  // Filter agents based on type
+  const filteredAgents = filterType === 'all' 
+    ? agents 
+    : agents.filter(agent => agent.type === filterType);
 
   // Group agents by type
-  const managerAgents = agents?.filter(agent => agent.agent_type === 'manager') || [];
-  const coordinatorAgents = agents?.filter(agent => agent.agent_type === 'coordinator') || [];
-  const basicAgents = agents?.filter(agent => agent.agent_type === 'basic') || [];
+  const managerAgents = agents.filter(agent => agent.type === 'manager');
+  const coordinatorAgents = agents.filter(agent => agent.type === 'coordinator');
+  const basicAgents = agents.filter(agent => agent.type === 'basic');
 
-  // Calculate summary stats
-  const totalAgents = agents?.length || 0;
-  const activeAgents = agents?.filter(agent => agent.status === 'active').length || 0;
-  const totalTasks = agents?.reduce((sum, agent) => sum + (Math.floor(Math.random() * 50 + 10)), 0) || 0;
-  const totalCommunications = agents?.reduce((sum, agent) => sum + (Math.floor(Math.random() * 100 + 20)), 0) || 0;
+  // Calculate stats
+  const activeAgents = agents.filter(agent => agent.status === 'active').length;
+  const totalTasks = agents.reduce((sum, agent) => sum + agent.tasksCompleted, 0);
+  const avgSuccessRate = Math.round(
+    agents.reduce((sum, agent) => sum + agent.successRate, 0) / agents.length
+  );
+
+  const AgentSection: React.FC<{ 
+    title: string; 
+    agents: AIAgent[]; 
+    description: string; 
+    icon: React.ReactNode;
+  }> = ({ title, agents: sectionAgents, description, icon }) => (
+    <div className="mb-8">
+      <div className="flex items-center space-x-2 mb-4">
+        {icon}
+        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <span className="text-sm text-gray-500">({sectionAgents.length})</span>
+      </div>
+      <p className="text-sm text-gray-600 mb-4">{description}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {sectionAgents.map((agent) => (
+          <AgentCard key={agent.id} agent={agent} onClick={onAgentSelect} />
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      {/* Dashboard Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">AI Agent Team Dashboard</h1>
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <Bot className="h-8 w-8 text-blue-600" />
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Agents</p>
+              <p className="text-2xl font-semibold text-gray-900">{agents.length}</p>
+            </div>
+          </div>
+        </div>
         
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Total Agents</div>
-              <div className="text-2xl font-bold text-gray-900">{totalAgents}</div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <Users className="h-8 w-8 text-green-600" />
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Active Now</p>
+              <p className="text-2xl font-semibold text-gray-900">{activeAgents}</p>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-green-100 text-green-600 rounded-lg">
-              <Activity className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Active Agents</div>
-              <div className="text-2xl font-bold text-gray-900">{activeAgents}</div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Tasks Today</div>
-              <div className="text-2xl font-bold text-gray-900">{totalTasks}</div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <MessageSquare className="h-8 w-8 text-purple-600" />
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Tasks</p>
+              <p className="text-2xl font-semibold text-gray-900">{totalTasks}</p>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-orange-100 text-orange-600 rounded-lg">
-              <MessageSquare className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Communications</div>
-              <div className="text-2xl font-bold text-gray-900">{totalCommunications}</div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <TrendingUp className="h-8 w-8 text-orange-600" />
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Avg Success</p>
+              <p className="text-2xl font-semibold text-gray-900">{avgSuccessRate}%</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Manager Agents */}
-      {managerAgents.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Phone className="w-5 h-5 mr-2 text-purple-600" />
-            Manager Agents
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {managerAgents.map(agent => (
-              <AgentCard 
-                key={agent.id} 
-                agent={agent} 
-                onClick={() => setSelectedAgent(agent.id)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Filter Buttons */}
+      <div className="flex space-x-2">
+        {['all', 'manager', 'coordinator', 'basic'].map((type) => (
+          <button
+            key={type}
+            onClick={() => setFilterType(type)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filterType === type
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {type.charAt(0).toUpperCase() + type.slice(1)}
+            {type !== 'all' && (
+              <span className="ml-1">
+                ({type === 'manager' ? managerAgents.length : 
+                  type === 'coordinator' ? coordinatorAgents.length : 
+                  basicAgents.length})
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-      {/* Coordinator Agents */}
-      {coordinatorAgents.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
-            Coordinator Agents
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {coordinatorAgents.map(agent => (
-              <AgentCard 
-                key={agent.id} 
-                agent={agent} 
-                onClick={() => setSelectedAgent(agent.id)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Basic Agents */}
-      {basicAgents.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <MessageSquare className="w-5 h-5 mr-2 text-green-600" />
-            Specialist Agents
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {basicAgents.map(agent => (
-              <AgentCard 
-                key={agent.id} 
-                agent={agent} 
-                onClick={() => setSelectedAgent(agent.id)}
-              />
-            ))}
-          </div>
+      {/* Agent Sections */}
+      {filterType === 'all' ? (
+        <>
+          <AgentSection
+            title="Manager Agents"
+            agents={managerAgents}
+            description="Strategic oversight, voice consultations, and high-level decision making"
+            icon={<Bot className="h-6 w-6 text-purple-600" />}
+          />
+          
+          <AgentSection
+            title="Coordinator Agents"
+            agents={coordinatorAgents}
+            description="Orchestrate multi-step processes and manage complex workflows"
+            icon={<Users className="h-6 w-6 text-blue-600" />}
+          />
+          
+          <AgentSection
+            title="Specialist Agents"
+            agents={basicAgents}
+            description="Handle specific tasks with expertise in lead processing and client management"
+            icon={<MessageSquare className="h-6 w-6 text-teal-600" />}
+          />
+        </>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAgents.map((agent) => (
+            <AgentCard key={agent.id} agent={agent} onClick={onAgentSelect} />
+          ))}
         </div>
       )}
     </div>
   );
 };
+
+export default AgentDashboard;

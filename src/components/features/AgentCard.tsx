@@ -1,102 +1,78 @@
-// src/components/features/AgentCard.tsx
 import React from 'react';
-import { Phone, MessageCircle, Clock, TrendingUp } from 'lucide-react';
-import { AIAgent, useAgentMetrics } from '../../services/agentAPI';
+import { Bot, Activity } from 'lucide-react';
+import type { AIAgent } from '../../types/agents';
 
 interface AgentCardProps {
   agent: AIAgent;
-  onClick?: () => void;
+  onClick: (agent: AIAgent) => void;
 }
 
-export const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
-  const { data: metrics } = useAgentMetrics(agent.id);
-
+const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-500';
-      case 'busy': return 'bg-yellow-500';
-      case 'inactive': return 'bg-gray-500';
-      default: return 'bg-gray-500';
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'busy': return 'bg-yellow-100 text-yellow-800';
+      case 'idle': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getAgentTypeIcon = (type: string) => {
+  const getTypeColor = (type: string) => {
     switch (type) {
-      case 'manager': return <Phone className="w-5 h-5" />;
-      case 'coordinator': return <TrendingUp className="w-5 h-5" />;
-      case 'basic': return <MessageCircle className="w-5 h-5" />;
-      default: return <MessageCircle className="w-5 h-5" />;
+      case 'manager': return 'bg-purple-100 text-purple-800';
+      case 'coordinator': return 'bg-blue-100 text-blue-800';
+      case 'basic': return 'bg-teal-100 text-teal-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getAgentTypeColor = (type: string) => {
+  const getTypeName = (type: string) => {
     switch (type) {
-      case 'manager': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'coordinator': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'basic': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'manager': return 'Manager Agent';
+      case 'coordinator': return 'Coordinator Agent';
+      case 'basic': return 'Specialist Agent';
+      default: return 'Agent';
     }
   };
 
   return (
     <div 
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-      onClick={onClick}
+      className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
+      onClick={() => onClick(agent)}
     >
-      {/* Agent Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-lg ${getAgentTypeColor(agent.agent_type)}`}>
-            {getAgentTypeIcon(agent.agent_type)}
-          </div>
+          <div className="text-3xl">{agent.avatar}</div>
           <div>
-            <h3 className="font-semibold text-gray-900">{agent.agent_name}</h3>
-            <p className="text-sm text-gray-600">{agent.agent_role}</p>
+            <h3 className="text-lg font-semibold text-gray-900">{agent.name}</h3>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(agent.type)}`}>
+              {getTypeName(agent.type)}
+            </span>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${getStatusColor(agent.status)}`}></div>
-          <span className="text-sm text-gray-600 capitalize">{agent.status}</span>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(agent.status)}`}>
+          <Activity className="h-3 w-3 mr-1" />
+          {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+        </span>
+      </div>
+      
+      <div className="space-y-2">
+        <p className="text-sm text-gray-600 font-medium">{agent.specialty}</p>
+        <p className="text-sm text-gray-500">{agent.lastActivity}</p>
+        
+        <div className="flex justify-between items-center pt-3 mt-3 border-t border-gray-100">
+          <div className="text-center">
+            <div className="text-lg font-semibold text-gray-900">{agent.tasksCompleted}</div>
+            <div className="text-xs text-gray-500">Tasks</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-semibold text-green-600">{agent.successRate}%</div>
+            <div className="text-xs text-gray-500">Success</div>
+          </div>
         </div>
       </div>
-
-      {/* Agent Capabilities */}
-      <div className="mb-4">
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(agent.capabilities).map(([key, value]) => 
-            value && (
-              <span 
-                key={key}
-                className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-              >
-                {key.replace('_', ' ')}
-              </span>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* Performance Metrics */}
-      {metrics && (
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <div className="text-gray-600">Tasks Completed</div>
-            <div className="font-semibold text-green-600">{metrics.tasks_completed}</div>
-          </div>
-          <div>
-            <div className="text-gray-600">Communications</div>
-            <div className="font-semibold text-blue-600">{metrics.communications_handled}</div>
-          </div>
-          <div>
-            <div className="text-gray-600">Leads Processed</div>
-            <div className="font-semibold text-purple-600">{metrics.leads_processed}</div>
-          </div>
-          <div>
-            <div className="text-gray-600">Avg Response</div>
-            <div className="font-semibold text-orange-600">{metrics.response_time_avg}</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+
+export default AgentCard;
