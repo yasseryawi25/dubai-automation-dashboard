@@ -340,6 +340,7 @@ const vapiConfig: VAPIConfig = {
 };
 
 export const vapiService = new VAPIService(vapiConfig);
+export { VAPIService }; // Export the class for static methods
 export default vapiService;
 
 // Re-export types for use in components

@@ -6,7 +6,7 @@ import { Bot, Bell, Settings, User } from 'lucide-react';
 import AgentDashboard from './components/features/AgentDashboard';
 import ManagerAgentChat from './components/features/ManagerAgentChat';
 import { agentAPI } from './services/agentAPI';
-import { vapiService } from './services/vapiService';
+import { vapiService, VAPIService } from './services/vapiService';
 import type { AIAgent } from './types/agents';
 
 // Main Dashboard Component with AI Agent Integration
@@ -51,13 +51,13 @@ const Dashboard: React.FC = () => {
       console.log('Initiating voice call to:', phoneNumber);
       
       // Validate phone number
-      if (!vapiService.validatePhoneNumber(phoneNumber)) {
+      if (!VAPIService.validatePhoneNumber(phoneNumber)) {
         alert('Please enter a valid phone number');
         return;
       }
 
       // Format phone number
-      const formattedNumber = vapiService.formatPhoneNumber(phoneNumber);
+      const formattedNumber = VAPIService.formatPhoneNumber(phoneNumber);
       
       // Create call via VAPI
       const callResponse = await vapiService.createCall({
