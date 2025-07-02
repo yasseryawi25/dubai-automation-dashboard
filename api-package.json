@@ -1,0 +1,29 @@
+{
+  "name": "api-server",
+  "version": "1.0.0",
+  "description": "Backend API server for Dubai Real Estate AI Agents Platform",
+  "main": "api-server.ts",
+  "scripts": {
+    "start": "tsx api-server.ts",
+    "dev": "tsx watch api-server.ts",
+    "build": "tsc api-server.ts --outDir dist",
+    "test": "echo \"API Server Test\" && curl http://localhost:3001/health"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/pg": "^8.10.9",
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "keywords": ["api", "real-estate", "ai-agents", "dubai", "backend"],
+  "author": "Dubai Real Estate AI Platform",
+  "license": "ISC"
+}

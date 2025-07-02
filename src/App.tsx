@@ -1,13 +1,31 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Bot, Bell, Settings, User } from 'lucide-react';
+import { Bot, Bell, Settings, User, Database } from 'lucide-react';
 
 // Import our AI Agent components
 import AgentDashboard from './components/features/AgentDashboard';
 import ManagerAgentChat from './components/features/ManagerAgentChat';
+import DatabaseTest from './components/common/DatabaseTest';
+
+// Import API services
 import { agentAPI } from './services/agentAPI';
+import { realAgentAPI } from './services/realAgentAPI';
 import { vapiService, VAPIService } from './services/vapiService';
 import type { AIAgent } from './types/agents';
+
+// Determine which API to use based on environment
+const getAPIService = () => {
+  const useMockData = import.meta.env.VITE_MOCK_DATA === 'true';
+  const useRealDatabase = import.meta.env.VITE_USE_REAL_DATABASE === 'true';
+  
+  if (useRealDatabase && !useMockData) {
+    console.log('🗄️ Using Real Database API');
+    return realAgentAPI;
+  } else {
+    console.log('📊 Using Mock Data API');
+    return agentAPI;
+  }
+};
 
 // Main Dashboard Component with AI Agent Integration
 const Dashboard: React.FC = () => {
@@ -15,6 +33,8 @@ const Dashboard: React.FC = () => {
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [loading, setLoading] = useState(true);
   const [showManagerChat, setShowManagerChat] = useState(false);
+  const [showDatabaseTest, setShowDatabaseTest] = useState(false);
+  const [apiService] = useState(() => getAPIService());
 
   useEffect(() => {
     loadAgents();
@@ -23,7 +43,7 @@ const Dashboard: React.FC = () => {
   const loadAgents = async () => {
     try {
       setLoading(true);
-      const agentData = await agentAPI.getAgents();
+      const agentData = await apiService.getAgents();
       setAgents(agentData);
     } catch (error) {
       console.error('Failed to load agents:', error);
@@ -106,14 +126,24 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
             <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
               <div className="flex items-center space-x-2 mb-2">
                 <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium">System Status</span>
               </div>
               <div className="text-xl font-bold">All Operational</div>
-              <div className="text-xs text-blue-200">6 agents active</div>
+              <div className="text-xs text-blue-200">{agents.length} agents active</div>
+            </div>
+            
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="text-sm font-medium mb-2">Data Source</div>
+              <div className="text-xl font-bold">
+                {import.meta.env.VITE_USE_REAL_DATABASE === 'true' ? '🗄️ Live DB' : '📊 Mock'}
+              </div>
+              <div className="text-xs text-blue-200">
+                {import.meta.env.VITE_USE_REAL_DATABASE === 'true' ? 'PostgreSQL' : 'Development'}
+              </div>
             </div>
             
             <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
@@ -131,6 +161,24 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Database Connection Status */}
+      {import.meta.env.VITE_SHOW_DEBUG_INFO === 'true' && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Development Tools</h2>
+            <button
+              onClick={() => setShowDatabaseTest(!showDatabaseTest)}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
+            >
+              <Database className="h-4 w-4" />
+              <span>{showDatabaseTest ? 'Hide' : 'Show'} DB Test</span>
+            </button>
+          </div>
+          
+          {showDatabaseTest && <DatabaseTest />}
+        </div>
+      )}
+
       {/* Manager Agent Quick Access */}
       {agents.find(a => a.type === 'manager') && (
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
@@ -143,6 +191,9 @@ const Dashboard: React.FC = () => {
                 </h3>
                 <p className="text-purple-700">
                   Personal AI assistant with voice calling • Speaks Arabic & English
+                </p>
+                <p className="text-sm text-purple-600">
+                  {agents.find(a => a.type === 'manager')?.tasksCompleted || 0} tasks completed • {agents.find(a => a.type === 'manager')?.successRate || 0}% success rate
                 </p>
               </div>
             </div>
@@ -159,6 +210,42 @@ const Dashboard: React.FC = () => {
               >
                 Voice Call
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Omar Hassan (Lead Qualification Agent) Highlight */}
+      {agents.find(a => a.name.includes('Omar')) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="text-4xl">🎯</div>
+              <div>
+                <h3 className="text-lg font-semibold text-amber-900">
+                  Omar Hassan - Lead Qualification Agent
+                </h3>
+                <p className="text-amber-700">
+                  24/7 WhatsApp processing • Arabic & English • Real-time qualification
+                </p>
+                <p className="text-sm text-amber-600">
+                  {agents.find(a => a.name.includes('Omar'))?.tasksCompleted || 0} leads processed • {agents.find(a => a.name.includes('Omar'))?.successRate || 0}% accuracy
+                </p>
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  const omar = agents.find(a => a.name.includes('Omar'));
+                  if (omar) handleAgentSelect(omar);
+                }}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                View Omar's Work
+              </button>
+              <div className="px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
+                ✅ Active & Processing
+              </div>
             </div>
           </div>
         </div>
@@ -272,7 +359,7 @@ const App: React.FC = () => {
                     Dubai Real Estate AI Platform
                   </h1>
                   <div className="text-xs text-gray-500">
-                    Demo Client - Premium Package
+                    Demo Client - Premium Package • {import.meta.env.VITE_USE_REAL_DATABASE === 'true' ? 'Live Database' : 'Development Mode'}
                   </div>
                 </div>
               </div>
@@ -286,7 +373,9 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-1">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>Real-time Processing</span>
+                    <span>
+                      {import.meta.env.VITE_USE_REAL_DATABASE === 'true' ? 'Live Processing' : 'Mock Data'}
+                    </span>
                   </div>
                 </div>
                 
@@ -323,6 +412,9 @@ const App: React.FC = () => {
             <div className="text-center text-sm text-gray-500">
               Dubai Real Estate AI Platform - Demo Environment • 
               <span className="text-blue-600 ml-1">Powered by n8n + AI Agent Technology</span>
+              {import.meta.env.VITE_SHOW_DEBUG_INFO === 'true' && (
+                <span className="text-orange-600 ml-2">• Development Mode Active</span>
+              )}
             </div>
           </div>
         </footer>
