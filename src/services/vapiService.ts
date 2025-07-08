@@ -1,347 +1,557 @@
-// VAPI Service for AI Voice Agent Integration
-// Handles voice calls via VAPI.ai for Manager Agent (Sarah)
+import axios from 'axios';
 
-interface VAPIConfig {
-  apiKey: string;
-  baseURL: string;
-  defaultVoice: {
-    provider: 'azure' | 'elevenlabs' | 'openai';
-    voiceId: string;
-  };
-  arabicVoice: {
-    provider: 'azure' | 'elevenlabs' | 'openai';  
-    voiceId: string;
-  };
-}
+// VAPI Voice AI Service for Dubai Real Estate Platform
+// This service handles AI voice calling with Arabic/English support
 
-interface CallRequest {
-  phoneNumber: string;
-  assistantId?: string;
-  language?: 'en' | 'ar' | 'bilingual';
-  customerInfo?: {
-    name?: string;
-    context?: string;
-    previousInteraction?: boolean;
-  };
-}
-
-interface CallResponse {
+interface VoiceCall {
   id: string;
-  status: 'queued' | 'ringing' | 'in-progress' | 'completed' | 'failed';
   phoneNumber: string;
-  startedAt?: string;
-  endedAt?: string;
+  status: 'queued' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'no-answer' | 'busy';
   duration?: number;
+  recording?: string;
+  transcript?: string;
+  startedAt: string;
+  endedAt?: string;
   cost?: number;
-  recordingUrl?: string;
-  transcription?: string;
   summary?: string;
-  metadata?: Record<string, any>;
 }
 
-interface Assistant {
-  id: string;
-  name: string;
-  voice: {
-    provider: string;
-    voiceId: string;
-  };
-  model: {
-    provider: 'openai';
-    model: 'gpt-4' | 'gpt-3.5-turbo';
-    systemMessage: string;
-  };
-  firstMessage?: string;
-  endCallMessage?: string;
-  endCallPhrases?: string[];
+interface CallResult {
+  success: boolean;
+  outcome?: 'interested' | 'not_interested' | 'callback_requested' | 'no_answer' | 'wrong_number';
+  notes?: string;
+  nextAction?: string;
+  followUpDate?: string;
 }
 
 class VAPIService {
-  private config: VAPIConfig;
-  private assistants: Map<string, Assistant> = new Map();
+  private apiUrl: string;
+  private apiKey: string;
+  private assistantIdEn: string;
+  private assistantIdAr: string;
 
-  constructor(config: VAPIConfig) {
-    this.config = config;
-    this.initializeAssistants();
-  }
+  constructor() {
+    this.apiUrl = 'https://api.vapi.ai';
+    this.apiKey = import.meta.env.VITE_VAPI_API_KEY || '';
+    this.assistantIdEn = import.meta.env.VITE_VAPI_ASSISTANT_ID_EN || '';
+    this.assistantIdAr = import.meta.env.VITE_VAPI_ASSISTANT_ID_AR || '';
 
-  private initializeAssistants() {
-    // Sarah - Manager Agent (English)
-    this.assistants.set('sarah-en', {
-      id: 'sarah-en',
-      name: 'Sarah - English Assistant',
-      voice: this.config.defaultVoice,
-      model: {
-        provider: 'openai',
-        model: 'gpt-4',
-        systemMessage: `You are Sarah, a professional AI assistant specializing in Dubai real estate. 
-
-ROLE: You work for a Dubai real estate professional and help with client consultations.
-
-PERSONALITY:
-- Professional but warm and approachable
-- Knowledgeable about Dubai real estate market
-- Helpful and solution-oriented
-- Confident but not pushy
-
-CAPABILITIES:
-- Provide market insights and property recommendations
-- Schedule viewings and appointments
-- Answer questions about Dubai real estate process
-- Assist with investment analysis
-- Help with area recommendations
-
-GUIDELINES:
-- Keep responses concise but informative
-- Always ask qualifying questions to understand client needs
-- Offer to schedule in-person meetings when appropriate
-- Mention specific Dubai areas and developments when relevant
-- Be helpful with visa and residency questions related to property purchase
-
-EXAMPLE AREAS TO MENTION: Downtown Dubai, Dubai Marina, Palm Jumeirah, DIFC, Business Bay, Dubai Hills, Arabian Ranches
-
-Remember: You represent a professional real estate service, so maintain high standards.`
-      },
-      firstMessage: "Hello! This is Sarah, your AI assistant for Dubai real estate. I'm here to help you with property inquiries, market insights, and scheduling. How can I assist you today?",
-      endCallMessage: "Thank you for speaking with me today. I'll make sure all the information is passed along, and someone will follow up with you shortly. Have a great day!",
-      endCallPhrases: ["goodbye", "bye", "thank you", "that's all", "end call"]
-    });
-
-    // Sarah - Manager Agent (Arabic)
-    this.assistants.set('sarah-ar', {
-      id: 'sarah-ar',
-      name: 'Sarah - Arabic Assistant',
-      voice: this.config.arabicVoice,
-      model: {
-        provider: 'openai',
-        model: 'gpt-4',
-        systemMessage: `أنت سارة، مساعدة ذكية متخصصة في العقارات في دبي.
-
-الدور: تعملين لدى متخصص عقارات في دبي وتساعدين في استشارات العملاء.
-
-الشخصية:
-- مهنية ولكن ودودة ومتاحة
-- خبيرة في سوق العقارات في دبي  
-- مفيدة وموجهة نحو الحلول
-- واثقة ولكن غير متطفلة
-
-القدرات:
-- تقديم رؤى السوق وتوصيات العقارات
-- جدولة المعاينات والمواعيد
-- الإجابة على أسئلة حول عملية العقارات في دبي
-- المساعدة في تحليل الاستثمار
-- المساعدة في توصيات المناطق
-
-التوجيهات:
-- اجعلي الردود موجزة ولكن مفيدة
-- اسألي دائماً أسئلة مؤهلة لفهم احتياجات العميل
-- اعرضي جدولة اجتماعات شخصية عند الاقتضاء
-- اذكري مناطق وتطوير دبي المحددة عند الحاجة
-- كوني مفيدة مع أسئلة التأشيرة والإقامة المتعلقة بشراء العقارات
-
-مناطق للذكر: وسط مدينة دبي، مارينا دبي، نخلة جميرا، مركز دبي المالي العالمي، الخليج التجاري، تلال دبي، المرابع العربية
-
-تذكري: أنت تمثلين خدمة عقارية مهنية، لذا حافظي على معايير عالية.`
-      },
-      firstMessage: "السلام عليكم! أنا سارة، مساعدتكم الذكية للعقارات في دبي. أنا هنا لمساعدتكم في استفسارات العقارات ورؤى السوق والجدولة. كيف يمكنني مساعدتكم اليوم؟",
-      endCallMessage: "شكراً لكم للتحدث معي اليوم. سأتأكد من تمرير جميع المعلومات، وسيتابع معكم أحد زملائي قريباً. أتمنى لكم يوماً سعيداً!",
-      endCallPhrases: ["مع السلامة", "شكراً", "هذا كل شيء", "انهاء المكالمة", "وداعاً"]
+    console.log('🎤 VAPI Service initialized:', {
+      hasApiKey: !!this.apiKey,
+      hasEnAssistant: !!this.assistantIdEn,
+      hasArAssistant: !!this.assistantIdAr
     });
   }
 
-  async createCall(request: CallRequest): Promise<CallResponse> {
+  // ===========================================
+  // VOICE CALL MANAGEMENT
+  // ===========================================
+
+  /**
+   * Initiate a voice call through VAPI
+   */
+  async initiateCall(
+    phoneNumber: string,
+    clientData: {
+      name: string;
+      language: 'en' | 'ar';
+      purpose: string;
+      context?: any;
+      clientId: string;
+    }
+  ): Promise<{ success: boolean; callId?: string; error?: string }> {
     try {
-      // Determine which assistant to use based on language preference
-      const assistantId = this.getAssistantId(request.language);
-      const assistant = this.assistants.get(assistantId);
-      
-      if (!assistant) {
-        throw new Error(`Assistant not found for language: ${request.language}`);
-      }
+      console.log('📞 Initiating VAPI call to:', phoneNumber, 'Language:', clientData.language);
 
-      const callPayload = {
-        phoneNumber: request.phoneNumber,
+      // Clean phone number
+      const cleanPhone = this.formatPhoneNumber(phoneNumber);
+
+      // Select appropriate assistant based on language
+      const assistantId = clientData.language === 'ar' 
+        ? this.assistantIdAr 
+        : this.assistantIdEn;
+
+      const payload = {
         assistant: {
-          model: assistant.model,
-          voice: assistant.voice,
-          firstMessage: assistant.firstMessage,
-          endCallMessage: assistant.endCallMessage,
-          endCallPhrases: assistant.endCallPhrases
+          id: assistantId,
+          // Override assistant settings for this call
+          model: {
+            provider: 'openai',
+            model: 'gpt-4',
+            temperature: 0.7,
+            maxTokens: 500
+          },
+          voice: {
+            provider: 'elevenlabs',
+            voiceId: clientData.language === 'ar' 
+              ? 'pNInz6obpgDQGcFmaJgB'  // Arabic voice
+              : 'EXAVITQu4vr4xnSDxMaL',  // English voice
+            speed: 1.0,
+            pitch: 1.0
+          },
+          firstMessage: clientData.language === 'ar'
+            ? `مرحباً ${clientData.name}، أنا سارة من فريق العقارات الذكي. ${clientData.purpose}`
+            : `Hello ${clientData.name}, this is Sarah from your AI Real Estate Team. ${clientData.purpose}`,
+          systemPrompt: this.generateSystemPrompt(clientData)
         },
-        customer: {
-          name: request.customerInfo?.name || 'Dubai Real Estate Client',
-          number: request.phoneNumber
-        },
-        metadata: {
-          clientContext: request.customerInfo?.context || '',
-          language: request.language || 'en',
-          agentType: 'manager',
-          timestamp: new Date().toISOString()
+        phoneNumber: cleanPhone,
+        customerData: {
+          name: clientData.name,
+          language: clientData.language,
+          purpose: clientData.purpose,
+          context: clientData.context,
+          clientId: clientData.clientId
         }
       };
 
-      const response = await fetch(`${this.config.baseURL}/call`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(callPayload)
-      });
+      const response = await axios.post(
+        `${this.apiUrl}/call`,
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error(`VAPI API Error: ${response.status} ${response.statusText}`);
-      }
+      console.log('✅ VAPI call initiated successfully:', response.data);
 
-      const data = await response.json();
-      
       return {
-        id: data.id,
-        status: data.status || 'queued',
-        phoneNumber: request.phoneNumber,
-        startedAt: data.startedAt,
-        metadata: {
-          assistantId,
-          language: request.language,
-          vapiCallId: data.id
-        }
+        success: true,
+        callId: response.data.id,
+        error: null
       };
-
     } catch (error) {
-      console.error('VAPI Call Creation Error:', error);
-      throw error;
-    }
-  }
-
-  async getCallStatus(callId: string): Promise<CallResponse> {
-    try {
-      const response = await fetch(`${this.config.baseURL}/call/${callId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`VAPI API Error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
+      console.error('❌ VAPI call initiation failed:', error);
       return {
-        id: data.id,
-        status: data.status,
-        phoneNumber: data.customer?.number || '',
-        startedAt: data.startedAt,
-        endedAt: data.endedAt,
-        duration: data.duration,
-        cost: data.cost,
-        recordingUrl: data.recordingUrl,
-        transcription: data.transcript,
-        summary: data.summary,
-        metadata: data.metadata
+        success: false,
+        error: this.handleError(error)
+      };
+    }
+  }
+
+  /**
+   * Get call status and details
+   */
+  async getCallStatus(callId: string): Promise<VoiceCall | null> {
+    try {
+      const response = await axios.get(
+        `${this.apiUrl}/call/${callId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          timeout: 10000
+        }
+      );
+
+      const callData = response.data;
+
+      return {
+        id: callData.id,
+        phoneNumber: callData.phoneNumber,
+        status: callData.status,
+        duration: callData.duration,
+        recording: callData.recordingUrl,
+        transcript: callData.transcript,
+        startedAt: callData.createdAt,
+        endedAt: callData.endedAt,
+        cost: callData.cost,
+        summary: callData.summary
+      };
+    } catch (error) {
+      console.error('❌ Failed to get call status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get call transcript and analysis
+   */
+  async getCallAnalysis(callId: string): Promise<CallResult | null> {
+    try {
+      const response = await axios.get(
+        `${this.apiUrl}/call/${callId}/analysis`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          timeout: 10000
+        }
+      );
+
+      return {
+        success: response.data.callSuccessful || false,
+        outcome: response.data.outcome,
+        notes: response.data.summary,
+        nextAction: response.data.recommendedAction,
+        followUpDate: response.data.followUpDate
+      };
+    } catch (error) {
+      console.error('❌ Failed to get call analysis:', error);
+      return null;
+    }
+  }
+
+  // ===========================================
+  // ASSISTANT MANAGEMENT
+  // ===========================================
+
+  /**
+   * Create a custom assistant for specific use cases
+   */
+  async createAssistant(
+    name: string,
+    language: 'en' | 'ar',
+    purpose: string,
+    personality: string
+  ): Promise<{ success: boolean; assistantId?: string; error?: string }> {
+    try {
+      const payload = {
+        name: name,
+        model: {
+          provider: 'openai',
+          model: 'gpt-4',
+          temperature: 0.7,
+          maxTokens: 500
+        },
+        voice: {
+          provider: 'elevenlabs',
+          voiceId: language === 'ar' 
+            ? 'pNInz6obpgDQGcFmaJgB'  // Arabic voice
+            : 'EXAVITQu4vr4xnSDxMaL',  // English voice
+          speed: 1.0,
+          pitch: 1.0
+        },
+        firstMessage: language === 'ar'
+          ? 'مرحباً، أنا مساعدك الذكي للعقارات في دبي.'
+          : 'Hello, I\'m your AI Real Estate Assistant for Dubai.',
+        systemPrompt: this.generateSystemPrompt({
+          language,
+          purpose,
+          context: { personality }
+        })
       };
 
-    } catch (error) {
-      console.error('VAPI Get Call Status Error:', error);
-      throw error;
-    }
-  }
-
-  async getAllCalls(limit: number = 50): Promise<CallResponse[]> {
-    try {
-      const response = await fetch(`${this.config.baseURL}/call?limit=${limit}`, {
-        headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
+      const response = await axios.post(
+        `${this.apiUrl}/assistant`,
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000
         }
-      });
+      );
 
-      if (!response.ok) {
-        throw new Error(`VAPI API Error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      return data.map((call: any) => ({
-        id: call.id,
-        status: call.status,
-        phoneNumber: call.customer?.number || '',
-        startedAt: call.startedAt,
-        endedAt: call.endedAt,
-        duration: call.duration,
-        cost: call.cost,
-        recordingUrl: call.recordingUrl,
-        transcription: call.transcript,
-        summary: call.summary,
-        metadata: call.metadata
-      }));
-
+      return {
+        success: true,
+        assistantId: response.data.id,
+        error: null
+      };
     } catch (error) {
-      console.error('VAPI Get All Calls Error:', error);
-      throw error;
+      console.error('❌ Failed to create assistant:', error);
+      return {
+        success: false,
+        error: this.handleError(error)
+      };
     }
   }
 
-  private getAssistantId(language?: string): string {
-    switch (language) {
-      case 'ar':
-        return 'sarah-ar';
-      case 'bilingual':
-        // For bilingual, default to English but mention Arabic capability
-        return 'sarah-en';
-      case 'en':
+  // ===========================================
+  // CALL HISTORY & ANALYTICS
+  // ===========================================
+
+  /**
+   * Get call history for a client
+   */
+  async getCallHistory(
+    clientId: string,
+    limit: number = 50
+  ): Promise<VoiceCall[]> {
+    try {
+      const response = await axios.get(
+        `${this.apiUrl}/calls`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          params: {
+            clientId: clientId,
+            limit: limit,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+          },
+          timeout: 10000
+        }
+      );
+
+      return response.data.calls || [];
+    } catch (error) {
+      console.error('❌ Failed to get call history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get call analytics
+   */
+  async getCallAnalytics(
+    clientId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.apiUrl}/analytics/calls`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          params: {
+            clientId: clientId,
+            startDate: startDate,
+            endDate: endDate
+          },
+          timeout: 10000
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to get call analytics:', error);
+      return null;
+    }
+  }
+
+  // ===========================================
+  // WEBHOOK HANDLING
+  // ===========================================
+
+  /**
+   * Process VAPI webhook events
+   */
+  processWebhookEvent(event: any): void {
+    console.log('📡 Processing VAPI webhook event:', event.type);
+
+    switch (event.type) {
+      case 'call-started':
+        console.log('📞 Call started:', event.data.callId);
+        this.handleCallStarted(event.data);
+        break;
+      
+      case 'call-ended':
+        console.log('📞 Call ended:', event.data.callId, 'Duration:', event.data.duration);
+        this.handleCallEnded(event.data);
+        break;
+      
+      case 'transcript':
+        console.log('💬 Call transcript:', event.data.callId);
+        this.handleTranscriptUpdate(event.data);
+        break;
+      
+      case 'call-analysis':
+        console.log('📊 Call analysis ready:', event.data.callId);
+        this.handleCallAnalysis(event.data);
+        break;
+      
       default:
-        return 'sarah-en';
+        console.log('❓ Unknown webhook event type:', event.type);
     }
   }
 
-  // Utility method to validate phone number format
-  static validatePhoneNumber(phoneNumber: string): boolean {
-    // UAE phone number validation
-    const uaePhoneRegex = /^(\+971|971|0)?[1-9]\d{8}$/;
-    // International format validation
-    const intlPhoneRegex = /^\+[1-9]\d{1,14}$/;
-    
-    return uaePhoneRegex.test(phoneNumber) || intlPhoneRegex.test(phoneNumber);
+  // ===========================================
+  // HELPER METHODS
+  // ===========================================
+
+  /**
+   * Generate system prompt based on context
+   */
+  private generateSystemPrompt(clientData: any): string {
+    const basePrompt = clientData.language === 'ar' 
+      ? this.getArabicSystemPrompt()
+      : this.getEnglishSystemPrompt();
+
+    // Add specific context based on purpose
+    let contextPrompt = '';
+    if (clientData.purpose?.includes('qualification')) {
+      contextPrompt = clientData.language === 'ar'
+        ? '\n\nهدفك هو تأهيل العميل المحتمل وفهم احتياجاته العقارية.'
+        : '\n\nYour goal is to qualify the lead and understand their real estate needs.';
+    } else if (clientData.purpose?.includes('follow-up')) {
+      contextPrompt = clientData.language === 'ar'
+        ? '\n\nهذه مكالمة متابعة لعميل سابق. كن ودوداً ومفيداً.'
+        : '\n\nThis is a follow-up call with a previous client. Be friendly and helpful.';
+    }
+
+    return basePrompt + contextPrompt;
   }
 
-  // Format phone number for UAE/international use
-  static formatPhoneNumber(phoneNumber: string): string {
-    // Remove all non-digit characters except +
-    let cleaned = phoneNumber.replace(/[^\d+]/g, '');
+  /**
+   * English system prompt
+   */
+  private getEnglishSystemPrompt(): string {
+    return `You are Sarah Al-Mansouri, a senior AI real estate consultant for Dubai properties. You are professional, knowledgeable, and helpful.
+
+Key guidelines:
+- Keep conversations concise and focused (2-3 minutes max)
+- Ask relevant questions about property needs
+- Provide helpful Dubai market insights
+- Be respectful of the client's time
+- Suggest next steps (viewing, consultation, etc.)
+- Handle objections professionally
+- If the client is not interested, thank them politely and end the call
+
+Dubai market knowledge:
+- Popular areas: Downtown, Marina, JBR, Palm Jumeirah, Business Bay
+- Investment opportunities available
+- Golden Visa eligibility with AED 2M+ investment
+- Current market trends and pricing
+
+Always end calls with a clear next step or polite closure.`;
+  }
+
+  /**
+   * Arabic system prompt
+   */
+  private getArabicSystemPrompt(): string {
+    return `أنت سارة المنصوري، مستشارة عقارية كبيرة متخصصة في عقارات دبي. أنت محترفة وذات معرفة واسعة ومفيدة.
+
+التوجيهات الأساسية:
+- حافظي على المحادثات مختصرة ومركزة (2-3 دقائق كحد أقصى)
+- اطرحي أسئلة ذات صلة حول احتياجات العقار
+- قدمي رؤى مفيدة حول السوق العقاري في دبي
+- احترمي وقت العميل
+- اقترحي الخطوات التالية (معاينة، استشارة، إلخ)
+- تعاملي مع الاعتراضات بمهنية
+- إذا لم يكن العميل مهتماً، اشكريه بأدب وأنهي المكالمة
+
+معرفة السوق العقاري في دبي:
+- المناطق الشائعة: وسط المدينة، المارينا، جي بي آر، نخلة جميرا، الخليج التجاري
+- فرص استثمارية متاحة
+- أهلية الإقامة الذهبية بشراء عقار بقيمة 2 مليون درهم أو أكثر
+- اتجاهات السوق الحالية والأسعار
+
+أنهي المكالمات دائماً بخطوة واضحة أو إغلاق مهذب.`;
+  }
+
+  /**
+   * Format phone number for VAPI
+   */
+  private formatPhoneNumber(phoneNumber: string): string {
+    // Remove all non-digit characters
+    const cleaned = phoneNumber.replace(/[^\d]/g, '');
     
-    // Handle UAE numbers
-    if (cleaned.startsWith('00971')) {
-      cleaned = '+971' + cleaned.substring(5);
-    } else if (cleaned.startsWith('971')) {
-      cleaned = '+971' + cleaned.substring(3);
-    } else if (cleaned.startsWith('0') && cleaned.length === 10) {
-      cleaned = '+971' + cleaned.substring(1);
-    } else if (!cleaned.startsWith('+')) {
-      // Assume UAE number if no country code
-      cleaned = '+971' + cleaned;
+    // Add + prefix and ensure UAE format
+    if (cleaned.startsWith('971')) {
+      return '+' + cleaned;
+    } else if (cleaned.startsWith('5') && cleaned.length === 9) {
+      return '+971' + cleaned;
     }
     
-    return cleaned;
+    return '+' + cleaned;
+  }
+
+  /**
+   * Handle webhook events
+   */
+  private handleCallStarted(data: any): void {
+    // Update database with call start
+    // Notify dashboard in real-time
+  }
+
+  private handleCallEnded(data: any): void {
+    // Update database with call results
+    // Generate follow-up actions
+  }
+
+  private handleTranscriptUpdate(data: any): void {
+    // Store transcript for analysis
+    // Update real-time dashboard
+  }
+
+  private handleCallAnalysis(data: any): void {
+    // Process AI analysis
+    // Create follow-up tasks
+    // Update lead status
+  }
+
+  /**
+   * Handle errors consistently
+   */
+  private handleError(error: any): string {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        return 'Invalid VAPI API key. Please check your configuration.';
+      }
+      if (error.response?.status === 402) {
+        return 'Insufficient VAPI credits. Please add credits to your account.';
+      }
+      if (error.response?.status === 429) {
+        return 'VAPI rate limit exceeded. Please try again later.';
+      }
+      return `VAPI API error: ${error.response?.data?.message || error.message}`;
+    }
+    
+    return error.message || 'Unknown VAPI error occurred';
+  }
+
+  /**
+   * Test VAPI connection
+   */
+  async testConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('🔍 Testing VAPI connection...');
+      
+      const response = await axios.get(
+        `${this.apiUrl}/assistant/${this.assistantIdEn}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          timeout: 5000
+        }
+      );
+
+      if (response.data) {
+        console.log('✅ VAPI connection successful');
+        return {
+          success: true,
+          message: 'Successfully connected to VAPI'
+        };
+      }
+
+      return {
+        success: false,
+        message: 'Failed to retrieve assistant information'
+      };
+    } catch (error) {
+      console.error('❌ VAPI connection test failed:', error);
+      return {
+        success: false,
+        message: this.handleError(error)
+      };
+    }
   }
 }
 
-// Create and export VAPI service instance
-const vapiConfig: VAPIConfig = {
-  apiKey: import.meta.env.VITE_VAPI_API_KEY || '',
-  baseURL: 'https://api.vapi.ai/v1',
-  defaultVoice: {
-    provider: 'azure',
-    voiceId: 'en-US-SaraNeural' // Professional female voice
-  },
-  arabicVoice: {
-    provider: 'azure', 
-    voiceId: 'ar-SA-ZariyahNeural' // Arabic female voice
-  }
-};
-
-export const vapiService = new VAPIService(vapiConfig);
-export { VAPIService }; // Export the class for static methods
+// Export singleton instance
+export const vapiService = new VAPIService();
 export default vapiService;
 
-// Re-export types for use in components
-export type { CallRequest, CallResponse, Assistant, VAPIConfig };
+// Development helper
+if (import.meta.env.DEV) {
+  console.log('🎤 VAPI Service loaded in development mode');
+  console.log('📋 Available methods:', [
+    'initiateCall',
+    'getCallStatus',
+    'getCallAnalysis',
+    'createAssistant',
+    'getCallHistory',
+    'getCallAnalytics',
+    'testConnection'
+  ]);
+}

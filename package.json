@@ -8,20 +8,26 @@
     "build": "tsc -b && vite build",
     "build-no-typecheck": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:diagnose": "node diagnose-connection.js",
+    "db:setup": "node setup-database-schema.js",
+    "db:test": "node test-supabase-connection.js",
+    "fix:connection": "fix-database-connection.bat",
+    "start:full-test": "run-full-test.bat"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.50.3",
     "@tanstack/react-query": "^5.81.5",
-    "@types/pg": "^8.15.4",
     "axios": "^1.10.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.0.0",
     "lucide-react": "^0.525.0",
-    "pg": "^8.16.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "recharts": "^3.0.2",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

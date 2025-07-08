@@ -100,16 +100,51 @@ export interface ManagerAgentChatProps {
   agentName: string;
 }
 
+// Database Types (re-exported from database.ts)
+export * from './database'
+
 // Environment Variables
 export interface EnvironmentConfig {
-  VITE_API_URL: string;
-  VITE_DATABASE_URL: string;
-  VITE_SUPABASE_URL?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
+  VITE_SUPABASE_URL: string;
+  VITE_SUPABASE_ANON_KEY: string;
 }
 
 declare global {
   interface Window {
     env: EnvironmentConfig;
   }
+}
+
+// User, Module, Notification, Metric Types for Navigation & Dashboard
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  role: 'admin' | 'agent' | 'manager';
+  language: 'en' | 'ar';
+}
+
+export interface Module {
+  id: string;
+  name: string;
+  path: string;
+  icon: React.ReactNode;
+}
+
+export interface Notification {
+  id: string;
+  type: 'success' | 'warning' | 'error' | 'info';
+  message: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface Metric {
+  id: string;
+  label: string;
+  value: number | string;
+  trend?: 'up' | 'down' | 'stable';
+  status: 'success' | 'warning' | 'error' | 'neutral';
+  icon?: React.ReactNode;
 }

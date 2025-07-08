@@ -1,0 +1,278 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Bot, User, Phone, Mail, MessageSquare, X } from 'lucide-react';
+
+interface ChatMessage {
+  id: string;
+  type: 'user' | 'agent';
+  content: string;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
+
+interface OmarLeadQualificationChatProps {
+  isOpen: boolean;
+  onClose: () => void;
+  agentName: string;
+  webhookUrl: string;
+}
+
+const OmarLeadQualificationChat: React.FC<OmarLeadQualificationChatProps> = ({ 
+  isOpen, 
+  onClose, 
+  agentName,
+  webhookUrl 
+}) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      type: 'agent',
+      content: 'Hello! I\'m Omar, your AI Lead Qualification Specialist. I\'m here to help you find the perfect property in Dubai. Could you please tell me what type of property you\'re looking for?',
+      timestamp: new Date()
+    }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const sendToN8N = async (message: string): Promise<string> => {
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: message,
+          timestamp: new Date().toISOString(),
+          agentId: 'omar-hassan',
+          sessionId: `session_${Date.now()}`,
+          metadata: {
+            source: 'dashboard_chat',
+            language: 'english'
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Extract the agent response from the n8n workflow response
+      return data.response || data.message || 'Thank you for your message. I\'m processing your inquiry and will respond shortly.';
+    } catch (error) {
+      console.error('Error sending message to n8n:', error);
+      return 'I apologize, but I\'m experiencing technical difficulties. Please try again in a moment, or feel free to contact us directly.';
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: inputMessage.trim(),
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsLoading(true);
+    setIsTyping(true);
+
+    try {
+      // Send message to n8n workflow
+      const agentResponse = await sendToN8N(userMessage.content);
+
+      // Simulate typing delay for better UX
+      setTimeout(() => {
+        const agentMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          type: 'agent',
+          content: agentResponse,
+          timestamp: new Date()
+        };
+
+        setMessages(prev => [...prev, agentMessage]);
+        setIsTyping(false);
+        setIsLoading(false);
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error in chat:', error);
+      setIsTyping(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl h-[600px] flex flex-col overflow-hidden">
+        {/* Chat Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-lg">
+              🎯
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">{agentName}</h3>
+              <p className="text-blue-100 text-sm">AI Lead Qualification Specialist</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 bg-blue-500 bg-opacity-50 rounded-full px-2 py-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-xs">Online</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-blue-100 hover:text-white transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`flex items-start space-x-2 max-w-[80%] ${
+                message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+              }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  message.type === 'user' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {message.type === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                </div>
+                <div className={`rounded-2xl px-4 py-2 ${
+                  message.type === 'user'
+                    ? 'bg-blue-600 text-white rounded-br-md'
+                    : 'bg-white text-gray-800 rounded-bl-md shadow-sm border'
+                }`}>
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className={`text-xs mt-1 ${
+                    message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                  }`}>
+                    {formatTime(message.timestamp)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Typing Indicator */}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="flex items-start space-x-2 max-w-[80%]">
+                <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center flex-shrink-0">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div className="bg-white rounded-2xl rounded-bl-md px-4 py-2 shadow-sm border">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Quick Actions */}
+        <div className="px-4 py-2 bg-white border-t border-gray-200">
+          <div className="flex space-x-2 overflow-x-auto">
+            {[
+              'Looking to buy an apartment',
+              'Interested in villa rental',
+              'Investment opportunity',
+              'Need budget consultation'
+            ].map((quickReply) => (
+              <button
+                key={quickReply}
+                onClick={() => {
+                  setInputMessage(quickReply);
+                  handleSendMessage();
+                }}
+                className="whitespace-nowrap text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-100 transition-colors"
+                disabled={isLoading}
+              >
+                {quickReply}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Message Input */}
+        <div className="p-4 bg-white border-t border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="flex-1 relative">
+              <textarea
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows={1}
+                disabled={isLoading}
+              />
+            </div>
+            <button
+              onClick={handleSendMessage}
+              disabled={!inputMessage.trim() || isLoading}
+              className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+          
+          {/* Connection Status */}
+          <div className="flex items-center justify-center mt-2 text-xs text-gray-500">
+            <div className="flex items-center space-x-1">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+              <span>Connected to AI Agent via n8n Workflow</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default OmarLeadQualificationChat;
