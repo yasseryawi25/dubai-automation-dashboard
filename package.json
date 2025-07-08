@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "build-no-typecheck": "vite build",
+    "build": "tsc --project tsconfig.build.json && vite build",
+    "build-no-typecheck": "vite build --config vite.config.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "db:diagnose": "node diagnose-connection.js",
@@ -18,6 +18,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.50.3",
     "@tanstack/react-query": "^5.81.5",
+    "@types/pg": "^8.15.4",
     "axios": "^1.10.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

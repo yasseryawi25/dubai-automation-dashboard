@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 
 # Build the application (bypass TypeScript errors for now)
-RUN npm run build-no-typecheck
+RUN npm run build-no-typecheck-no-typecheck
 
 # Production stage
 FROM nginx:alpine
