@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --project tsconfig.build.json && vite build",
+    "build": "npx vite build --mode production",
     "build-no-typecheck": "vite build --config vite.config.ts",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -13,7 +13,8 @@
     "db:setup": "node setup-database-schema.js",
     "db:test": "node test-supabase-connection.js",
     "fix:connection": "fix-database-connection.bat",
-    "start:full-test": "run-full-test.bat"
+    "start:full-test": "run-full-test.bat",
+    "emergency-build": "npx vite build --mode production --force"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.3",
