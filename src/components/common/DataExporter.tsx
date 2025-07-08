@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, FileText, FileSpreadsheet, FilePdf, Mail, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, File, Mail, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 
 export interface ExportOptions {
   format: 'excel' | 'pdf' | 'csv';
@@ -51,7 +51,7 @@ const DataExporter: React.FC<{
 
   const formatIcons = {
     excel: <FileSpreadsheet className="w-5 h-5 text-green-600" />,
-    pdf: <FilePdf className="w-5 h-5 text-red-600" />,
+    pdf: <File className="w-5 h-5 text-red-600" />,
     csv: <FileText className="w-5 h-5 text-blue-600" />
   };
 

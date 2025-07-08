@@ -16,7 +16,6 @@ interface BulkActionBarProps {
   actions: BulkAction[];
   onSelectAll: () => void;
   onClearSelection: () => void;
-  onSelectAll: () => void;
   isAllSelected: boolean;
   loading?: boolean;
 }

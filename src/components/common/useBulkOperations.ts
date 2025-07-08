@@ -134,9 +134,9 @@ export function useBulkOperations() {
     setRedoStack(prev => [operation, ...prev]);
 
     // In a real implementation, you would reverse the operation
-    // For now, we'll just mark it as undone
+    // For now, we'll just mark it as pending (to be reversed)
     setOperations(prev => prev.map(op => 
-      op.id === operation.id ? { ...op, status: 'undone' } : op
+      op.id === operation.id ? { ...op, status: 'pending' } : op
     ));
   }, [undoStack]);
 

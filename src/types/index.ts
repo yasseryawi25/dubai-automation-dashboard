@@ -116,6 +116,27 @@ declare global {
 }
 
 // User, Module, Notification, Metric Types for Navigation & Dashboard
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  avatar?: string;
+  role: 'admin' | 'agent' | 'manager';
+  language: 'en' | 'ar';
+  timezone: string;
+}
+
+export interface ClientProfile {
+  id: string;
+  companyName: string;
+  businessType: 'individual' | 'small_agency' | 'medium_agency';
+  logo?: string;
+  primaryColor: string;
+  secondaryColor: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -123,6 +144,8 @@ export interface User {
   avatarUrl?: string;
   role: 'admin' | 'agent' | 'manager';
   language: 'en' | 'ar';
+  profile?: UserProfile;
+  clientProfile?: ClientProfile;
 }
 
 export interface Module {
@@ -147,4 +170,134 @@ export interface Metric {
   trend?: 'up' | 'down' | 'stable';
   status: 'success' | 'warning' | 'error' | 'neutral';
   icon?: React.ReactNode;
+}
+
+// Fix SearchResult type
+export interface SearchResult {
+  id: string;
+  type: 'document' | 'lead' | 'workflow' | 'property' | 'campaign' | 'agent';
+  title: string;
+  description: string;
+  url: string;
+  metadata: any;
+  score: number;
+}
+
+// Fix BulkOperation status
+export interface BulkOperation {
+  id: string;
+  action: string;
+  itemIds: string[];
+  timestamp: string;
+  progress: number;
+  status: 'failed' | 'pending' | 'completed' | 'processing';
+  result?: any;
+  error?: string;
+}
+
+// Fix Template interface
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  type: 'document' | 'email' | 'whatsapp' | 'sms' | 'contract';
+  category: string;
+  language: 'en' | 'ar' | 'both';
+  content: string;
+  variables: any[];
+  isActive: boolean;
+  usageCount: number;
+  createdBy: string;
+  version: number;
+  tags: any[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Fix Appointment interface
+export interface Appointment {
+  id: string;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  status: 'completed' | 'scheduled' | 'cancelled' | 'confirmed' | 'rescheduled';
+  attendees: string[];
+  location?: string;
+  type: string;
+}
+
+// Fix BrandingProfile interface
+export interface BrandingProfile {
+  id: string;
+  clientId: string;
+  businessName: string;
+  logoUrl?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  fontFamily: string;
+  tagline?: string;
+  bio?: string;
+  website?: string;
+  socialPlatforms: ('facebook' | 'instagram' | 'linkedin' | 'twitter' | 'tiktok' | 'youtube')[];
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+  contact: {
+    email: string;
+    phone: string;
+    whatsapp: string;
+    address: string;
+  };
+}
+
+// Fix DesignTemplate interface
+export interface DesignTemplate {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  previewUrl: string;
+  sampleText: string;
+}
+
+// Fix MarketingCampaign interface
+export interface MarketingCampaign {
+  id: string;
+  name: string;
+  description: string;
+  status: 'active' | 'paused' | 'completed' | 'draft';
+  type: 'lead_generation' | 'brand_awareness' | 'property_sales' | 'engagement';
+  startDate: string;
+  endDate: string;
+  budget: {
+    total: number;
+    spent: number;
+    currency: 'AED';
+    dailyLimit?: number;
+  };
+  spend: number;
+  roi: number;
+  leadsGenerated: number;
+  platforms: {
+    facebook?: { enabled: boolean; budget: number; targeting: any; adFormat: string; };
+    instagram?: { enabled: boolean; budget: number; targeting: any; adFormat: string; };
+    linkedin?: { enabled: boolean; budget: number; targeting: any; adFormat: string; };
+    twitter?: { enabled: boolean; budget: number; targeting: any; adFormat: string; };
+    tiktok?: { enabled: boolean; budget: number; targeting: any; adFormat: string; };
+    youtube?: { enabled: boolean; budget: number; targeting: any; adFormat: string; };
+  };
+  analytics: {
+    impressions: number;
+    clicks: number;
+    conversions: number;
+    ctr: number;
+    cpc: number;
+    cpa: number;
+  };
+  targeting: any;
+  createdAt: string;
+  updatedAt: string;
 }

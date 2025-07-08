@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Eye, Download, Edit, Palette, Font, FileText, User, Mail, Phone, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, Eye, Download, Edit, Palette, Type, FileText, User, Mail, Phone, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { BrandingProfile, DesignTemplate } from '../types';
 
 // Sample branding profiles (Dubai agent, bilingual)

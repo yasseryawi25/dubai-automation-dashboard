@@ -14,19 +14,17 @@ import './App.css'
 function App() {
   return (
     <Routes>
-      {/* Main application routes */}
-      <Route path="/" element={<Layout />}>
-        <Route index element={<HomePage />} />
-        <Route path="leads" element={<LeadsPage />} />
-        <Route path="admin" element={<AdminPage />} />
-        <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="marketing" element={<MarketingPage />} />
-        <Route path="orchestration" element={<OrchestrationPage />} />
-        <Route path="profile" element={<ProfilePage />} />
-        
-        {/* Database testing route */}
-        <Route path="database-test" element={<DatabaseConnectionTester />} />
-      </Route>
+      {/* Main application routes with Layout wrapper */}
+      <Route path="/" element={<Layout children={<HomePage />} />} />
+      <Route path="/leads" element={<Layout children={<LeadsPage />} />} />
+      <Route path="/admin" element={<Layout children={<AdminPage />} />} />
+      <Route path="/analytics" element={<Layout children={<AnalyticsPage />} />} />
+      <Route path="/marketing" element={<Layout children={<MarketingPage />} />} />
+      <Route path="/orchestration" element={<Layout children={<OrchestrationPage />} />} />
+      <Route path="/profile" element={<Layout children={<ProfilePage />} />} />
+      
+      {/* Database testing route */}
+      <Route path="/database-test" element={<Layout children={<DatabaseConnectionTester />} />} />
       
       {/* Redirect any unknown routes to home */}
       <Route path="*" element={<Navigate to="/" replace />} />
